@@ -6,12 +6,54 @@
   "rebaseWhen": "auto",
   "reviewers": ["jalexandercarr"],
   "prConcurrentLimit": 10,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["home/run_onchange_install-go\\.sh\\.tmpl$"],
+      "matchStrings": ["GO_VERSION=\"(?<currentValue>[^\"]+)\""],
+      "depNameTemplate": "golang",
+      "datasourceTemplate": "github-releases",
+      "packageNameTemplate": "golang/go",
+      "extractVersionTemplate": "^go(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["home/run_onchange_install-python\\.sh\\.tmpl$"],
+      "matchStrings": ["PYTHON_VERSION=\"(?<currentValue>[^\"]+)\""],
+      "depNameTemplate": "python",
+      "datasourceTemplate": "github-releases",
+      "packageNameTemplate": "python/cpython",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["home/run_onchange_install-node\\.sh\\.tmpl$"],
+      "matchStrings": ["NVM_VERSION=\"(?<currentValue>[^\"]+)\""],
+      "depNameTemplate": "nvm",
+      "datasourceTemplate": "github-releases",
+      "packageNameTemplate": "nvm-sh/nvm",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["home/run_onchange_install-java\\.sh\\.tmpl$"],
+      "matchStrings": ["JAVA_VERSION=\"(?<currentValue>[^\"]+)\""],
+      "depNameTemplate": "temurin",
+      "datasourceTemplate": "java-version"
+    }
+  ],
   "packageRules": [
     {
       "matchManagers": ["dockerfile"],
       "matchPaths": [".renovate/Dockerfile.renovate"],
       "commitMessagePrefix": "chore(renovate):",
       "description": "Track Renovate image updates"
+    },
+    {
+      "matchManagers": ["custom.regex"],
+      "matchFileNames": ["home/**"],
+      "commitMessagePrefix": "chore(deps):",
+      "description": "Track version updates in installation scripts"
     }
   ]
 }
