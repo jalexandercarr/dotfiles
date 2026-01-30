@@ -2,53 +2,117 @@
 # chezmoi:template:left-delimiter="{{" right-delimiter="}}"
 # Install fonts - runs once per machine
 
+# Initialize log file first (before any redirects)
+mkdir -p "${HOME}/.local/log/chezmoi"
+CHEZMOI_LOG_FILE="${HOME}/.local/log/chezmoi/install-$(date +%Y%m%d-%H%M%S).log"
+
+# Source the logging helper
+HELPER_SCRIPT="${HOME}/.local/bin/chezmoi-log-helper.sh"
+if [[ -f "$HELPER_SCRIPT" ]]; then
+    source "$HELPER_SCRIPT"
+    init_logging
+else
+    # Fallback if helper not yet installed - create minimal functions
+    print_header() { printf "\n\033[1m\033[34m▸\033[0m \033[1m%s\033[0m\n" "$1"; }
+    print_done() { printf "  \033[32m✓\033[0m %s\n" "$1"; }
+    print_skip() { printf "  \033[2m○\033[0m \033[2m%s\033[0m\n" "$1"; }
+    print_fail() { printf "  \033[31m✗\033[0m %s\n" "$1"; }
+    with_spinner() { local msg="$1"; shift; printf "  \033[36m⠋\033[0m %s" "$msg"; if "$@" >> "$CHEZMOI_LOG_FILE" 2>&1; then printf "\r\033[K"; print_done "$msg"; else printf "\r\033[K"; print_fail "$msg"; return 1; fi; }
+    log_silent() { echo "[$(date '+%H:%M:%S')] $*" >> "$CHEZMOI_LOG_FILE"; }
+    log_section() { echo "=== $1 ===" >> "$CHEZMOI_LOG_FILE"; }
+    show_progress() { local c="$1" t="$2" m="$3"; printf "\r\033[K  \033[36m"; for ((i=0;i<c*20/t;i++)); do printf "█"; done; for ((i=c*20/t;i<20;i++)); do printf "░"; done; printf "\033[0m %s (%d/%d)" "$m" "$c" "$t"; }
+    complete_progress() { printf "\r\033[K"; print_done "$1"; }
+fi
+
 {{- if not .packages.fonts }}
-echo "[FONTS] Font installation skipped (disabled in config)"
+print_skip "Fonts (disabled in config)"
 exit 0
 {{- end }}
 
 set -euo pipefail
 
-
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
-# Use chezmoi's environment variable instead of calling chezmoi (avoids lock conflict)
+# Use chezmoi's environment variable - fonts are in home/fonts relative to source dir
+# The source dir structure mirrors the target, so home/fonts in repo becomes fonts in CHEZMOI_SOURCE_DIR
 CHEZMOI_SOURCE="${CHEZMOI_SOURCE_DIR:-$HOME/.local/share/chezmoi}"
 FONT_SOURCE="$CHEZMOI_SOURCE/fonts"
 
-echo "[FONTS] Installing Nerd Fonts..."
+# Fallback: check alternate locations for different layouts
+if [[ ! -d "$FONT_SOURCE" ]]; then
+    FONT_SOURCE="$CHEZMOI_SOURCE/home/fonts"
+fi
 
-if [[ "$OS" == "darwin" ]]; then
-    # macOS: Copy fonts to ~/Library/Fonts
+log_section "Font Installation"
+print_header "Nerd Fonts"
+
+install_fonts_macos() {
     FONT_DEST="$HOME/Library/Fonts"
-    mkdir -p "$FONT_DEST"
+    mkdir -p "$FONT_DEST" >> "$CHEZMOI_LOG_FILE" 2>&1
+    
+    # Count fonts
+    local font_files=()
     for fontfile in "$FONT_SOURCE"/*.otf "$FONT_SOURCE"/*.ttf; do
-        if [[ -f "$fontfile" ]]; then
-            fname="$(basename "$fontfile")"
-            cp -f "$fontfile" "$FONT_DEST/$fname"
-            echo "[FONTS] Installed: $fname -> $FONT_DEST/"
-        fi
+        [[ -f "$fontfile" ]] && font_files+=("$fontfile")
     done
-    echo "[FONTS] macOS fonts installed to $FONT_DEST"
-elif [[ "$OS" == "linux" ]]; then
-    # Linux: Copy fonts system-wide to /usr/share/fonts
+    
+    local total=${#font_files[@]}
+    if [[ $total -eq 0 ]]; then
+        print_skip "No fonts found in $FONT_SOURCE"
+        return 0
+    fi
+    
+    local current=0
+    for fontfile in "${font_files[@]}"; do
+        ((current++))
+        local fname="$(basename "$fontfile")"
+        show_progress "$current" "$total" "Installing fonts"
+        cp -f "$fontfile" "$FONT_DEST/$fname" >> "$CHEZMOI_LOG_FILE" 2>&1
+        log_silent "Installed: $fname -> $FONT_DEST/"
+    done
+    
+    complete_progress "Installed ${total} fonts to ~/Library/Fonts"
+}
+
+install_fonts_linux() {
     FONT_DEST="/usr/share/fonts"
-    sudo mkdir -p "$FONT_DEST"
+    sudo mkdir -p "$FONT_DEST" >> "$CHEZMOI_LOG_FILE" 2>&1
+    
+    # Count fonts
+    local font_files=()
     for fontfile in "$FONT_SOURCE"/*.otf "$FONT_SOURCE"/*.ttf; do
-        if [[ -f "$fontfile" ]]; then
-            fname="$(basename "$fontfile")"
-            sudo cp -f "$fontfile" "$FONT_DEST/$fname"
-            echo "[FONTS] Installed: $fname -> $FONT_DEST/"
-        fi
+        [[ -f "$fontfile" ]] && font_files+=("$fontfile")
     done
+    
+    local total=${#font_files[@]}
+    if [[ $total -eq 0 ]]; then
+        print_skip "No fonts found in $FONT_SOURCE"
+        return 0
+    fi
+    
+    local current=0
+    for fontfile in "${font_files[@]}"; do
+        ((current++))
+        local fname="$(basename "$fontfile")"
+        show_progress "$current" "$total" "Installing fonts"
+        sudo cp -f "$fontfile" "$FONT_DEST/$fname" >> "$CHEZMOI_LOG_FILE" 2>&1
+        log_silent "Installed: $fname -> $FONT_DEST/"
+    done
+    
+    complete_progress "Installed ${total} fonts to /usr/share/fonts"
+    
     # Refresh font cache
     if command -v fc-cache &>/dev/null; then
-        echo "[FONTS] Refreshing font cache..."
-        sudo fc-cache -fv "$FONT_DEST" 2>/dev/null || true
+        with_spinner "Refreshing font cache" sudo fc-cache -f "$FONT_DEST"
     fi
-    echo "[FONTS] Linux fonts installed to $FONT_DEST"
+}
+
+if [[ "$OS" == "darwin" ]]; then
+    install_fonts_macos
+elif [[ "$OS" == "linux" ]]; then
+    install_fonts_linux
 else
-    echo "[FONTS] Unsupported OS: $OS"
+    print_fail "Unsupported OS: $OS"
     exit 1
 fi
 
-echo "[FONTS] Font installation complete!"
+print_done "Font installation complete"

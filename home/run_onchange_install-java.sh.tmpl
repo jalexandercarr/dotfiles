@@ -2,8 +2,27 @@
 # chezmoi:template:left-delimiter="{{" right-delimiter="}}"
 # Install Java (OpenJDK) - optional, controlled by chezmoi config
 
+# Initialize log file first (before any redirects)
+mkdir -p "${HOME}/.local/log/chezmoi"
+CHEZMOI_LOG_FILE="${HOME}/.local/log/chezmoi/install-$(date +%Y%m%d-%H%M%S).log"
+
+# Source the logging helper
+HELPER_SCRIPT="${HOME}/.local/bin/chezmoi-log-helper.sh"
+if [[ -f "$HELPER_SCRIPT" ]]; then
+    source "$HELPER_SCRIPT"
+else
+    # Fallback if helper not yet installed - create minimal functions
+    print_header() { printf "\n\033[1m\033[34m▸\033[0m \033[1m%s\033[0m\n" "$1"; }
+    print_done() { printf "  \033[32m✓\033[0m %s\n" "$1"; }
+    print_skip() { printf "  \033[2m○\033[0m \033[2m%s\033[0m\n" "$1"; }
+    print_fail() { printf "  \033[31m✗\033[0m %s\n" "$1"; }
+    with_spinner() { local msg="$1"; shift; printf "  \033[36m⠋\033[0m %s" "$msg"; if "$@" >> "$CHEZMOI_LOG_FILE" 2>&1; then printf "\r\033[K"; print_done "$msg"; else printf "\r\033[K"; print_fail "$msg"; return 1; fi; }
+    log_silent() { echo "[$(date '+%H:%M:%S')] $*" >> "$CHEZMOI_LOG_FILE"; }
+    log_section() { echo "=== $1 ===" >> "$CHEZMOI_LOG_FILE"; }
+fi
+
 {{- if not .packages.java }}
-echo "[JAVA] Java installation skipped (disabled in config)"
+print_skip "Java (disabled in config)"
 exit 0
 {{- end }}
 
@@ -22,43 +41,88 @@ elif [[ "$JAVA_ARCH" == "arm64" || "$JAVA_ARCH" == "aarch64" ]]; then
     JAVA_ARCH="aarch64"
 fi
 
-echo "[JAVA] Installing Java (OpenJDK) ${JAVA_VERSION}..."
+log_section "Java Installation"
+print_header "Java (OpenJDK ${JAVA_VERSION})"
+
+install_java_macos() {
+    if ! command -v brew >/dev/null; then
+        with_spinner "Installing Homebrew" /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    fi
+    with_spinner "Installing OpenJDK" brew install --quiet openjdk
+}
+
+install_java_debian() {
+    with_spinner "Updating package lists" sudo apt-get update -qq
+    with_spinner "Installing OpenJDK ${JAVA_VERSION}" sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq openjdk-${JAVA_VERSION}-jdk
+}
+
+install_java_fedora() {
+    with_spinner "Installing OpenJDK" sudo dnf install -y -q java-latest-openjdk java-latest-openjdk-devel
+}
+
+install_java_rhel() {
+    # Try different Java packages in order of preference
+    log_silent "Attempting to install Java via package manager"
+    
+    if sudo yum install -y -q java-${JAVA_VERSION}-amazon-corretto-devel >> "$CHEZMOI_LOG_FILE" 2>&1; then
+        print_done "Installing Amazon Corretto ${JAVA_VERSION}"
+        return 0
+    fi
+    
+    if sudo yum install -y -q java-${JAVA_VERSION}-openjdk java-${JAVA_VERSION}-openjdk-devel >> "$CHEZMOI_LOG_FILE" 2>&1; then
+        print_done "Installing OpenJDK ${JAVA_VERSION}"
+        return 0
+    fi
+    
+    if sudo amazon-linux-extras install -y java-openjdk${JAVA_VERSION} >> "$CHEZMOI_LOG_FILE" 2>&1; then
+        print_done "Installing OpenJDK via amazon-linux-extras"
+        return 0
+    fi
+    
+    # Fallback to tarball installation
+    log_silent "Falling back to tarball installation"
+    with_spinner "Installing prerequisites" sudo yum install -y -q wget tar
+    
+    log_silent "Downloading Temurin JDK"
+    (
+        cd /tmp
+        curl -fsSL -o "OpenJDK${JAVA_VERSION}.tar.gz" "https://github.com/adoptium/temurin${JAVA_VERSION}-binaries/releases/download/jdk-${JAVA_VERSION}%2B35/OpenJDK${JAVA_VERSION}U-jdk_${JAVA_ARCH}_linux_hotspot_${JAVA_VERSION}_35.tar.gz"
+    ) >> "$CHEZMOI_LOG_FILE" 2>&1
+    
+    with_spinner "Extracting JDK" bash -c "cd /tmp && tar -xzf OpenJDK${JAVA_VERSION}.tar.gz"
+    
+    log_silent "Installing JDK to /usr/lib/jvm"
+    sudo mkdir -p /usr/lib/jvm >> "$CHEZMOI_LOG_FILE" 2>&1
+    sudo mv /tmp/jdk-${JAVA_VERSION}* /usr/lib/jvm/jdk-${JAVA_VERSION} >> "$CHEZMOI_LOG_FILE" 2>&1
+    sudo alternatives --install /usr/bin/java java /usr/lib/jvm/jdk-${JAVA_VERSION}/bin/java 1 >> "$CHEZMOI_LOG_FILE" 2>&1
+    sudo alternatives --install /usr/bin/javac javac /usr/lib/jvm/jdk-${JAVA_VERSION}/bin/javac 1 >> "$CHEZMOI_LOG_FILE" 2>&1
+    rm -f /tmp/OpenJDK${JAVA_VERSION}.tar.gz >> "$CHEZMOI_LOG_FILE" 2>&1
+}
+
+install_java_arch() {
+    with_spinner "Installing OpenJDK" sudo pacman -Sy --noconfirm --quiet jdk-openjdk
+}
 
 if [[ "$OS" == "darwin" ]]; then
-    # macOS: Prefer Homebrew for OpenJDK
-    if ! command -v brew >/dev/null; then
-        echo "[JAVA] Homebrew not found. Installing..."
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    fi
-    brew install openjdk
+    install_java_macos
 elif [[ -f /etc/debian_version ]]; then
-    sudo apt-get update -y
-    sudo apt-get install -y openjdk-${JAVA_VERSION}-jdk
+    install_java_debian
 elif [[ -f /etc/fedora-release ]]; then
-    sudo dnf install -y java-latest-openjdk java-latest-openjdk-devel
+    install_java_fedora
 elif [[ -f /etc/centos-release ]] || [[ -f /etc/redhat-release ]] || [[ -f /etc/system-release ]]; then
-    # Try Amazon Linux 2023 / Amazon Linux 2 package first, then fallback to other RHEL-based
-    sudo yum install -y java-${JAVA_VERSION}-amazon-corretto-devel 2>/dev/null || \
-    sudo yum install -y java-${JAVA_VERSION}-openjdk java-${JAVA_VERSION}-openjdk-devel 2>/dev/null || \
-    sudo amazon-linux-extras install -y java-openjdk${JAVA_VERSION} 2>/dev/null || {
-        echo "[JAVA] Could not install Java via package manager, installing from tarball..."
-        sudo yum install -y wget tar
-        cd /tmp
-        curl -LO "https://github.com/adoptium/temurin${JAVA_VERSION}-binaries/releases/download/jdk-${JAVA_VERSION}%2B35/OpenJDK${JAVA_VERSION}U-jdk_${JAVA_ARCH}_linux_hotspot_${JAVA_VERSION}_35.tar.gz"
-        tar -xzf "OpenJDK${JAVA_VERSION}U-jdk_${JAVA_ARCH}_linux_hotspot_${JAVA_VERSION}_35.tar.gz"
-        sudo mkdir -p /usr/lib/jvm
-        sudo mv jdk-${JAVA_VERSION}* /usr/lib/jvm/jdk-${JAVA_VERSION}
-        sudo alternatives --install /usr/bin/java java /usr/lib/jvm/jdk-${JAVA_VERSION}/bin/java 1
-        sudo alternatives --install /usr/bin/javac javac /usr/lib/jvm/jdk-${JAVA_VERSION}/bin/javac 1
-        cd ..
-        rm -rf OpenJDK${JAVA_VERSION}U-jdk_*.tar.gz
-    }
+    install_java_rhel
 elif [[ -f /etc/arch-release ]]; then
-    sudo pacman -Sy --noconfirm jdk-openjdk
+    install_java_arch
 else
-    echo "[JAVA] Unsupported OS for Java installation."
+    print_fail "Unsupported OS for Java installation"
+    log_silent "Unsupported OS: $OS"
     exit 1
 fi
 
-echo "[JAVA] Java installation complete!"
-java -version 2>&1 || echo "[JAVA] Note: You may need to restart your shell to use Java"
+# Verify installation
+if command -v java >/dev/null 2>&1; then
+    JAVA_INSTALLED_VERSION=$(java -version 2>&1 | head -n1 | awk -F'"' '{print $2}')
+    print_done "Java installed (${JAVA_INSTALLED_VERSION})"
+else
+    print_done "Java installed (restart shell to use)"
+fi

@@ -1,6 +1,51 @@
 " ~/.vimrc: Vim configuration file
 
-" Basic settings
+" ============================================================================
+" VIM-PLUG PLUGIN MANAGER
+" ============================================================================
+" Auto-install vim-plug if not present
+let data_dir = has('nvim') ? stdpath('data') . '/site' : '~/.vim'
+if empty(glob(data_dir . '/autoload/plug.vim'))
+  silent execute '!curl -fLo '.data_dir.'/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
+  autocmd VimEnter * PlugInstall --sync | source $MYVIMRC
+endif
+
+" Plugin declarations
+call plug#begin('~/.vim/plugged')
+
+" File navigation
+Plug 'preservim/nerdtree'                " File explorer sidebar
+Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
+Plug 'junegunn/fzf.vim'                  " Fuzzy finder
+
+" Git integration
+Plug 'tpope/vim-fugitive'                " Git commands in vim
+Plug 'airblade/vim-gitgutter'            " Git diff in gutter
+
+" UI enhancements
+Plug 'vim-airline/vim-airline'           " Enhanced status line
+Plug 'vim-airline/vim-airline-themes'    " Airline themes
+Plug 'mhinz/vim-startify'                " Start screen
+
+" Editing utilities
+Plug 'tpope/vim-surround'                " Surround text objects
+Plug 'tpope/vim-commentary'              " Easy commenting
+Plug 'jiangmiao/auto-pairs'              " Auto-close brackets
+Plug 'tpope/vim-repeat'                  " Repeat plugin commands with .
+
+" Syntax and language support
+Plug 'sheerun/vim-polyglot'              " Language pack
+Plug 'dense-analysis/ale'                " Async linting
+
+" Color schemes (additional)
+Plug 'joshdick/onedark.vim'              " One Dark theme
+Plug 'morhetz/gruvbox'                   " Gruvbox theme
+
+call plug#end()
+
+" ============================================================================
+" BASIC SETTINGS
+" ============================================================================
 set nocompatible
 syntax on
 set number
@@ -24,6 +69,10 @@ set cursorline
 set scrolloff=5
 set wildmenu
 set wildmode=longest:full,full
+set hidden                               " Allow hidden buffers
+set updatetime=100                       " Faster updates for gitgutter
+set signcolumn=yes                       " Always show sign column
+set clipboard=unnamed                    " Use system clipboard
 
 " Enable mouse support
 set mouse=a
@@ -33,9 +82,102 @@ filetype on
 filetype plugin on
 filetype indent on
 
-" Color scheme
-colorscheme desert
+" ============================================================================
+" COLOR SCHEME
+" ============================================================================
+" Use true colors if available
+if has('termguicolors')
+    set termguicolors
+endif
+set background=dark
+silent! colorscheme onedark
 
-" Key mappings
+" ============================================================================
+" PLUGIN CONFIGURATION
+" ============================================================================
+
+" NERDTree settings
+let NERDTreeShowHidden=1
+let NERDTreeIgnore=['\.git$', '\.DS_Store$', '__pycache__', '\.pyc$']
+let NERDTreeMinimalUI=1
+autocmd BufEnter * if tabpagenr('$') == 1 && winnr('$') == 1 && exists('b:NERDTree') && b:NERDTree.isTabTree() | quit | endif
+
+" Airline settings
+let g:airline_powerline_fonts = 1
+let g:airline#extensions#tabline#enabled = 1
+let g:airline#extensions#ale#enabled = 1
+let g:airline_theme='onedark'
+
+" GitGutter settings
+let g:gitgutter_sign_added = '+'
+let g:gitgutter_sign_modified = '~'
+let g:gitgutter_sign_removed = '-'
+
+" ALE (Linting) settings
+let g:ale_linters_explicit = 1
+let g:ale_fix_on_save = 0
+let g:ale_sign_error = '✗'
+let g:ale_sign_warning = '⚠'
+let g:ale_echo_msg_format = '[%linter%] %s [%severity%]'
+
+" FZF settings
+let g:fzf_layout = { 'down': '40%' }
+let g:fzf_preview_window = ['right:50%', 'ctrl-/']
+
+" Startify settings
+let g:startify_change_to_dir = 0
+let g:startify_session_autoload = 1
+let g:startify_lists = [
+    \ { 'type': 'files',     'header': ['   Recent Files'] },
+    \ { 'type': 'dir',       'header': ['   Current Directory: '. getcwd()] },
+    \ { 'type': 'sessions',  'header': ['   Sessions'] },
+    \ { 'type': 'bookmarks', 'header': ['   Bookmarks'] },
+    \ ]
+
+" ============================================================================
+" KEY MAPPINGS
+" ============================================================================
+" Leader key
+let mapleader = " "
+
+" Save and quit shortcuts
 nnoremap <C-s> :w<CR>
 inoremap <C-s> <Esc>:w<CR>a
+nnoremap <leader>w :w<CR>
+nnoremap <leader>q :q<CR>
+nnoremap <leader>x :x<CR>
+
+" NERDTree toggles
+nnoremap <leader>n :NERDTreeToggle<CR>
+nnoremap <leader>f :NERDTreeFind<CR>
+
+" FZF mappings
+nnoremap <leader>p :Files<CR>
+nnoremap <leader>b :Buffers<CR>
+nnoremap <leader>g :Rg<CR>
+nnoremap <leader>h :History<CR>
+
+" Buffer navigation
+nnoremap <leader>] :bnext<CR>
+nnoremap <leader>[ :bprevious<CR>
+nnoremap <leader>d :bdelete<CR>
+
+" Window navigation
+nnoremap <C-h> <C-w>h
+nnoremap <C-j> <C-w>j
+nnoremap <C-k> <C-w>k
+nnoremap <C-l> <C-w>l
+
+" Clear search highlighting
+nnoremap <leader><space> :nohlsearch<CR>
+
+" Git shortcuts (vim-fugitive)
+nnoremap <leader>gs :Git<CR>
+nnoremap <leader>gc :Git commit<CR>
+nnoremap <leader>gp :Git push<CR>
+nnoremap <leader>gl :Git log<CR>
+nnoremap <leader>gd :Gdiffsplit<CR>
+
+" ALE navigation
+nmap <silent> [e <Plug>(ale_previous_wrap)
+nmap <silent> ]e <Plug>(ale_next_wrap)

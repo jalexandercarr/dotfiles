@@ -2,41 +2,83 @@
 # chezmoi:template:left-delimiter="{{" right-delimiter="}}"
 # Welcome message and setup verification - runs once on first apply
 
-echo "============================================="
-echo "  chezmoi dotfiles installation complete!"
-echo "============================================="
-echo ""
-echo "User: {{ .name }} <{{ .email }}>"
-echo "GitHub: {{ .githubUsername }}"
-echo ""
-echo "Installed packages:"
+# Source the logging helper for log location
+HELPER_SCRIPT="${HOME}/.local/bin/chezmoi-log-helper.sh"
+CHEZMOI_LOG_DIR="${HOME}/.local/log/chezmoi"
+CHEZMOI_LATEST_LOG="${CHEZMOI_LOG_DIR}/latest.log"
+
+# Colors
+CLR_RESET='\033[0m'
+CLR_BOLD='\033[1m'
+CLR_DIM='\033[2m'
+CLR_GREEN='\033[32m'
+CLR_BLUE='\033[34m'
+CLR_CYAN='\033[36m'
+
+printf "\n"
+printf "${CLR_BOLD}${CLR_CYAN}╔═══════════════════════════════════════════════════════════╗${CLR_RESET}\n"
+printf "${CLR_BOLD}${CLR_CYAN}║${CLR_RESET}          ${CLR_BOLD}chezmoi dotfiles installation complete!${CLR_RESET}          ${CLR_BOLD}${CLR_CYAN}║${CLR_RESET}\n"
+printf "${CLR_BOLD}${CLR_CYAN}╚═══════════════════════════════════════════════════════════╝${CLR_RESET}\n"
+printf "\n"
+printf "${CLR_BOLD}${CLR_BLUE}▸${CLR_RESET} ${CLR_BOLD}User${CLR_RESET}\n"
+printf "  {{ .name }} <{{ .email }}>\n"
+printf "  GitHub: {{ .githubUsername }}\n"
+printf "\n"
+printf "${CLR_BOLD}${CLR_BLUE}▸${CLR_RESET} ${CLR_BOLD}Installed Packages${CLR_RESET}\n"
 {{- if .packages.devtools }}
-echo "  ✓ Development tools"
+printf "  ${CLR_GREEN}✓${CLR_RESET} Development tools\n"
+{{- else }}
+printf "  ${CLR_DIM}○ Development tools${CLR_RESET}\n"
 {{- end }}
 {{- if .packages.docker }}
-echo "  ✓ Docker"
+printf "  ${CLR_GREEN}✓${CLR_RESET} Docker\n"
+{{- else }}
+printf "  ${CLR_DIM}○ Docker${CLR_RESET}\n"
 {{- end }}
 {{- if .packages.go }}
-echo "  ✓ Go"
+printf "  ${CLR_GREEN}✓${CLR_RESET} Go\n"
+{{- else }}
+printf "  ${CLR_DIM}○ Go${CLR_RESET}\n"
 {{- end }}
 {{- if .packages.kubernetes }}
-echo "  ✓ Kubernetes tools"
+printf "  ${CLR_GREEN}✓${CLR_RESET} Kubernetes tools\n"
+{{- else }}
+printf "  ${CLR_DIM}○ Kubernetes tools${CLR_RESET}\n"
 {{- end }}
 {{- if .packages.node }}
-echo "  ✓ Node.js (NVM)"
+printf "  ${CLR_GREEN}✓${CLR_RESET} Node.js (NVM)\n"
+{{- else }}
+printf "  ${CLR_DIM}○ Node.js${CLR_RESET}\n"
 {{- end }}
 {{- if .packages.python }}
-echo "  ✓ Python"
+printf "  ${CLR_GREEN}✓${CLR_RESET} Python\n"
+{{- else }}
+printf "  ${CLR_DIM}○ Python${CLR_RESET}\n"
 {{- end }}
 {{- if .packages.java }}
-echo "  ✓ Java"
+printf "  ${CLR_GREEN}✓${CLR_RESET} Java\n"
+{{- else }}
+printf "  ${CLR_DIM}○ Java${CLR_RESET}\n"
 {{- end }}
 {{- if .packages.fonts }}
-echo "  ✓ Nerd Fonts"
+printf "  ${CLR_GREEN}✓${CLR_RESET} Nerd Fonts\n"
+{{- else }}
+printf "  ${CLR_DIM}○ Nerd Fonts${CLR_RESET}\n"
 {{- end }}
-echo ""
-echo "To update your dotfiles, run: chezmoi update"
-echo "To edit configuration, run: chezmoi edit-config"
-echo "To re-apply, run: chezmoi apply"
-echo ""
-echo "============================================="
+printf "\n"
+printf "${CLR_BOLD}${CLR_BLUE}▸${CLR_RESET} ${CLR_BOLD}Add-ons${CLR_RESET}\n"
+{{- if .addons.motd }}
+printf "  ${CLR_GREEN}✓${CLR_RESET} Custom MOTD\n"
+{{- else }}
+printf "  ${CLR_DIM}○ Custom MOTD${CLR_RESET}\n"
+{{- end }}
+printf "\n"
+printf "${CLR_BOLD}${CLR_BLUE}▸${CLR_RESET} ${CLR_BOLD}Quick Commands${CLR_RESET}\n"
+printf "  ${CLR_DIM}Update dotfiles:${CLR_RESET}    chezmoi update\n"
+printf "  ${CLR_DIM}Edit config:${CLR_RESET}        chezmoi edit-config\n"
+printf "  ${CLR_DIM}Re-apply:${CLR_RESET}           chezmoi apply\n"
+printf "\n"
+if [[ -f "$CHEZMOI_LATEST_LOG" ]]; then
+printf "${CLR_DIM}  Installation log: ${CHEZMOI_LATEST_LOG}${CLR_RESET}\n"
+printf "\n"
+fi
