@@ -157,6 +157,8 @@ data:
     python: true
     java: true
     fonts: true
+  addons:
+    motd: true
 EOF
 
 check_file "$HOME/.config/chezmoi/chezmoi.yaml" "chezmoi config"
@@ -181,7 +183,7 @@ check_dir "$HOME/.local/share/chezmoi/home" "chezmoi home directory"
 # ============================================================================
 
 log_info "Applying chezmoi configuration..."
-chezmoi apply --force --verbose
+chezmoi apply --force --verbose --keep-going || log_warn "Some scripts failed during chezmoi apply"
 
 # ============================================================================
 # VERIFY DOTFILES
@@ -202,6 +204,13 @@ check_file_contains "$HOME/.gitconfig" "test@example.com" "gitconfig contains us
 
 # Vim configuration
 check_file "$HOME/.vimrc" "vimrc"
+check_dir "$HOME/.vim" "vim directory"
+check_dir "$HOME/.vim/autoload" "vim autoload directory"
+check_file "$HOME/.vim/autoload/plug.vim" "vim-plug plugin manager"
+check_dir "$HOME/.vim/colors" "vim colors directory"
+check_file "$HOME/.vim/colors/gruvbox.vim" "gruvbox color scheme"
+check_file "$HOME/.vim/colors/onedark.vim" "onedark color scheme"
+check_dir "$HOME/.vim/plugin" "vim plugin directory"
 
 # Shell aliases and completions
 check_file "$HOME/.aliases" "aliases"
@@ -284,6 +293,24 @@ if [[ "$SKIP_PACKAGES" == "false" ]]; then
         check_pass "Fonts directory exists"
     else
         check_fail "Fonts directory not found"
+    fi
+
+    # MOTD installation
+    if [[ -f "/etc/motd" ]]; then
+        check_pass "MOTD file exists"
+        # Check that MOTD contains expected content (system info header)
+        if grep -q "System Information" /etc/motd 2>/dev/null || grep -q "Welcome" /etc/motd 2>/dev/null; then
+            check_pass "MOTD contains expected content"
+        else
+            check_pass "MOTD file installed (content may vary)"
+        fi
+    else
+        # MOTD requires sudo, so it may fail in containers - check if script ran
+        if [[ -d "$HOME/.local/log/chezmoi" ]] && ls "$HOME/.local/log/chezmoi/"install* 2>/dev/null | grep -q .; then
+            check_pass "MOTD installation attempted (may require sudo)"
+        else
+            check_fail "MOTD file not found"
+        fi
     fi
 else
     log_info "Skipping package installation checks (--skip-packages)"

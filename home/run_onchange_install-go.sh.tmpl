@@ -2,8 +2,27 @@
 # chezmoi:template:left-delimiter="{{" right-delimiter="}}"
 # Install Go - optional, controlled by chezmoi config
 
+# Initialize log file first (before any redirects)
+mkdir -p "${HOME}/.local/log/chezmoi"
+CHEZMOI_LOG_FILE="${HOME}/.local/log/chezmoi/install-$(date +%Y%m%d-%H%M%S).log"
+
+# Source the logging helper
+HELPER_SCRIPT="${HOME}/.local/bin/chezmoi-log-helper.sh"
+if [[ -f "$HELPER_SCRIPT" ]]; then
+    source "$HELPER_SCRIPT"
+else
+    # Fallback if helper not yet installed - create minimal functions
+    print_header() { printf "\n\033[1m\033[34m▸\033[0m \033[1m%s\033[0m\n" "$1"; }
+    print_done() { printf "  \033[32m✓\033[0m %s\n" "$1"; }
+    print_skip() { printf "  \033[2m○\033[0m \033[2m%s\033[0m\n" "$1"; }
+    print_fail() { printf "  \033[31m✗\033[0m %s\n" "$1"; }
+    with_spinner() { local msg="$1"; shift; printf "  \033[36m⠋\033[0m %s" "$msg"; if "$@" >> "$CHEZMOI_LOG_FILE" 2>&1; then printf "\r\033[K"; print_done "$msg"; else printf "\r\033[K"; print_fail "$msg"; return 1; fi; }
+    log_silent() { echo "[$(date '+%H:%M:%S')] $*" >> "$CHEZMOI_LOG_FILE"; }
+    log_section() { echo "=== $1 ===" >> "$CHEZMOI_LOG_FILE"; }
+fi
+
 {{- if not .packages.go }}
-echo "[GO] Go installation skipped (disabled in config)"
+print_skip "Go (disabled in config)"
 exit 0
 {{- end }}
 
@@ -23,45 +42,59 @@ if [[ "$GO_ARCH" == "x86_64" ]]; then
 elif [[ "$GO_ARCH" == "arm64" || "$GO_ARCH" == "aarch64" ]]; then
     GO_ARCH="arm64"
 else
-    echo "[GO] Unsupported architecture: $GO_ARCH"
+    print_fail "Unsupported architecture: $GO_ARCH"
     exit 1
 fi
 
-echo "[GO] Installing Go ${GO_VERSION}..."
+log_section "Go Installation"
+print_header "Go ${GO_VERSION}"
 
-if [[ "$OS" == "darwin" ]]; then
+install_go_macos() {
     if ! command -v brew >/dev/null; then
-        echo "[GO] Homebrew not found. Installing..."
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        with_spinner "Installing Homebrew" /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     fi
-    brew install go
-else
-    # Linux: Install from source
+    with_spinner "Installing Go" brew install --quiet go
+}
+
+install_go_linux() {
+    # Install wget/tar dependencies
     if [[ -f /etc/debian_version ]]; then
-        sudo apt-get update -y
-        sudo apt-get install -y wget tar
+        with_spinner "Installing prerequisites" bash -c "sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq wget tar"
     elif [[ -f /etc/fedora-release ]]; then
-        sudo dnf install -y wget tar
+        with_spinner "Installing prerequisites" sudo dnf install -y -q wget tar
     elif [[ -f /etc/centos-release ]] || [[ -f /etc/redhat-release ]] || [[ -f /etc/system-release ]]; then
-        sudo yum install -y wget tar
+        with_spinner "Installing prerequisites" sudo yum install -y -q wget tar
     elif [[ -f /etc/arch-release ]]; then
-        sudo pacman -Sy --noconfirm wget tar
+        with_spinner "Installing prerequisites" sudo pacman -Sy --noconfirm --quiet wget tar
     else
-        echo "[GO] Unsupported OS for Go installation."
+        print_fail "Unsupported OS for Go installation"
         exit 1
     fi
 
-    sudo rm -rf /usr/local/go*
-    mkdir -p /tmp/golang
+    # Cleanup existing Go installations
+    sudo rm -rf /usr/local/go* >> "$CHEZMOI_LOG_FILE" 2>&1 || true
+    mkdir -p /tmp/golang >> "$CHEZMOI_LOG_FILE" 2>&1
 
-    # Download and install
-    wget --quiet "https://go.dev/dl/go${GO_VERSION}.${GO_OS}-${GO_ARCH}.tar.gz" -P /tmp/golang
-    sudo tar -C /usr/local -xzf "/tmp/golang/go${GO_VERSION}.${GO_OS}-${GO_ARCH}.tar.gz"
-    sudo mv /usr/local/go "/usr/local/go${GO_VERSION}"
-    sudo ln -sf "/usr/local/go${GO_VERSION}/bin/go" /usr/local/bin/go
+    with_spinner "Downloading Go ${GO_VERSION}" wget --quiet "https://go.dev/dl/go${GO_VERSION}.${GO_OS}-${GO_ARCH}.tar.gz" -P /tmp/golang
+    with_spinner "Extracting Go" sudo tar -C /usr/local -xzf "/tmp/golang/go${GO_VERSION}.${GO_OS}-${GO_ARCH}.tar.gz"
     
-    rm -rf /tmp/golang
+    log_silent "Setting up Go symlinks"
+    sudo mv /usr/local/go "/usr/local/go${GO_VERSION}" >> "$CHEZMOI_LOG_FILE" 2>&1
+    sudo ln -sf "/usr/local/go${GO_VERSION}/bin/go" /usr/local/bin/go >> "$CHEZMOI_LOG_FILE" 2>&1
+    
+    rm -rf /tmp/golang >> "$CHEZMOI_LOG_FILE" 2>&1
+}
+
+if [[ "$OS" == "darwin" ]]; then
+    install_go_macos
+else
+    install_go_linux
 fi
 
-echo "[GO] Go installation complete!"
-go version || echo "[GO] Note: You may need to restart your shell to use Go"
+# Verify installation
+if command -v go >/dev/null 2>&1; then
+    GO_INSTALLED_VERSION=$(go version 2>/dev/null | awk '{print $3}')
+    print_done "Go installed ($GO_INSTALLED_VERSION)"
+else
+    print_done "Go installed (restart shell to use)"
+fi

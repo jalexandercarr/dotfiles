@@ -2,8 +2,28 @@
 # chezmoi:template:left-delimiter="{{" right-delimiter="}}"
 # Install Docker - optional, controlled by chezmoi config
 
+# Initialize log file first (before any redirects)
+mkdir -p "${HOME}/.local/log/chezmoi"
+CHEZMOI_LOG_FILE="${HOME}/.local/log/chezmoi/install-$(date +%Y%m%d-%H%M%S).log"
+
+# Source the logging helper
+HELPER_SCRIPT="${HOME}/.local/bin/chezmoi-log-helper.sh"
+if [[ -f "$HELPER_SCRIPT" ]]; then
+    source "$HELPER_SCRIPT"
+else
+    # Fallback if helper not yet installed - create minimal functions
+    print_header() { printf "\n\033[1m\033[34m▸\033[0m \033[1m%s\033[0m\n" "$1"; }
+    print_done() { printf "  \033[32m✓\033[0m %s\n" "$1"; }
+    print_skip() { printf "  \033[2m○\033[0m \033[2m%s\033[0m\n" "$1"; }
+    print_fail() { printf "  \033[31m✗\033[0m %s\n" "$1"; }
+    print_warn() { printf "  \033[33m!\033[0m %s\n" "$1"; }
+    with_spinner() { local msg="$1"; shift; printf "  \033[36m⠋\033[0m %s" "$msg"; if "$@" >> "$CHEZMOI_LOG_FILE" 2>&1; then printf "\r\033[K"; print_done "$msg"; else printf "\r\033[K"; print_fail "$msg"; return 1; fi; }
+    log_silent() { echo "[$(date '+%H:%M:%S')] $*" >> "$CHEZMOI_LOG_FILE"; }
+    log_section() { echo "=== $1 ===" >> "$CHEZMOI_LOG_FILE"; }
+fi
+
 {{- if not .packages.docker }}
-echo "[DOCKER] Docker installation skipped (disabled in config)"
+print_skip "Docker (disabled in config)"
 exit 0
 {{- end }}
 
@@ -13,45 +33,73 @@ OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
 USER="$(id -un)"
 
-echo "[DOCKER] Installing Docker..."
+log_section "Docker Installation"
+print_header "Docker"
+
+install_docker_macos() {
+    if ! command -v brew >/dev/null; then
+        with_spinner "Installing Homebrew" /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    fi
+    with_spinner "Installing Docker Desktop" brew install --cask --quiet docker
+    print_warn "Please launch Docker Desktop manually for the first time"
+}
+
+install_docker_debian() {
+    with_spinner "Updating package lists" sudo apt-get update -qq
+    with_spinner "Installing prerequisites" sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ca-certificates curl gnupg lsb-release
+    
+    # Setup Docker repo
+    log_silent "Setting up Docker repository"
+    sudo mkdir -m 0755 -p /etc/apt/keyrings >> "$CHEZMOI_LOG_FILE" 2>&1
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg 2>> "$CHEZMOI_LOG_FILE" | sudo gpg --dearmor --yes -o /etc/apt/keyrings/docker.gpg 2>> "$CHEZMOI_LOG_FILE"
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    
+    with_spinner "Updating package lists" sudo apt-get update -qq
+    with_spinner "Installing Docker Engine" sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    with_spinner "Adding user to docker group" sudo usermod -aG docker $USER
+}
+
+install_docker_fedora() {
+    with_spinner "Installing dnf plugins" sudo dnf install -y -q dnf-plugins-core
+    log_silent "Adding Docker repository"
+    sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo >> "$CHEZMOI_LOG_FILE" 2>&1
+    with_spinner "Installing Docker Engine" sudo dnf install -y -q docker-ce docker-ce-cli containerd.io
+    with_spinner "Adding user to docker group" sudo usermod -aG docker $USER
+}
+
+install_docker_rhel() {
+    if grep -q "Amazon Linux" /etc/system-release 2>/dev/null; then
+        print_skip "Docker on Amazon Linux (not supported by Docker CE)"
+        log_silent "Skipping Docker on Amazon Linux"
+        return 0
+    fi
+    
+    with_spinner "Installing yum utils" sudo yum install -y -q yum-utils
+    log_silent "Adding Docker repository"
+    sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo >> "$CHEZMOI_LOG_FILE" 2>&1
+    with_spinner "Installing Docker Engine" sudo yum install -y -q docker-ce docker-ce-cli containerd.io
+    with_spinner "Adding user to docker group" sudo usermod -aG docker $USER
+}
+
+install_docker_arch() {
+    with_spinner "Installing Docker" sudo pacman -Sy --noconfirm --quiet docker
+    with_spinner "Adding user to docker group" sudo usermod -aG docker $USER
+}
 
 if [[ "$OS" == "darwin" ]]; then
-    if ! command -v brew >/dev/null; then
-        echo "[DOCKER] Homebrew not found. Installing..."
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    fi
-    brew install --cask docker
-    echo "[DOCKER] Please launch Docker Desktop manually for the first time."
+    install_docker_macos
 elif [[ -f /etc/debian_version ]]; then
-    sudo apt-get update -y
-    sudo apt-get install -y ca-certificates curl gnupg lsb-release
-    sudo mkdir -m 0755 -p /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor --yes -o /etc/apt/keyrings/docker.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    sudo apt-get update -y
-    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-    sudo usermod -aG docker $USER
+    install_docker_debian
 elif [[ -f /etc/fedora-release ]]; then
-    sudo dnf install -y dnf-plugins-core
-    sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
-    sudo dnf install -y docker-ce docker-ce-cli containerd.io
-    sudo usermod -aG docker $USER
+    install_docker_fedora
 elif [[ -f /etc/centos-release ]] || [[ -f /etc/redhat-release ]] || [[ -f /etc/system-release ]]; then
-    if grep -q "Amazon Linux" /etc/system-release 2>/dev/null; then
-        echo "[DOCKER] Skipping Docker installation on Amazon Linux (not supported by Docker CE)"
-        exit 0
-    else
-        sudo yum install -y yum-utils
-        sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-        sudo yum install -y docker-ce docker-ce-cli containerd.io
-        sudo usermod -aG docker $USER
-    fi
+    install_docker_rhel
 elif [[ -f /etc/arch-release ]]; then
-    sudo pacman -Sy --noconfirm docker
-    sudo usermod -aG docker $USER
+    install_docker_arch
 else
-    echo "[DOCKER] Unsupported OS for Docker installation."
+    print_fail "Unsupported OS for Docker installation"
+    log_silent "Unsupported OS: $OS"
     exit 1
 fi
 
-echo "[DOCKER] Docker installation complete!"
+print_done "Docker installed"

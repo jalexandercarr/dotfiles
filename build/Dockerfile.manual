@@ -1,0 +1,52 @@
+FROM ubuntu:22.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Base tooling (root)
+RUN apt-get update -y && \
+    apt-get install -y \
+      sudo \
+      ca-certificates \
+      curl \
+      wget \
+      git \
+      bash \
+      bash-completion \
+      zsh \
+      zsh-autosuggestions \
+      zsh-syntax-highlighting \
+      pkg-config \
+      gnupg \
+      lsb-release \
+      tar \
+      make \
+      unzip \
+      fontconfig \
+      vim \
+      locales
+
+# Set up locales for proper shell behavior
+RUN locale-gen en_US.UTF-8
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
+
+# Install chezmoi
+RUN sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/local/bin
+
+# Create a non-root user with sudo access
+RUN useradd -ms /bin/zsh -G sudo dev && \
+    echo "dev ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/dev && \
+    echo "Defaults !requiretty" >> /etc/sudoers.d/dev && \
+    chmod 440 /etc/sudoers.d/dev
+
+# Switch to non-root user
+USER dev
+ENV HOME=/home/dev
+WORKDIR /home/dev
+
+# Set up minimal zsh config so it doesn't prompt on first run
+RUN touch ~/.zshrc
+
+# Default to zsh but bash is also available
+CMD ["zsh"]
