@@ -12,18 +12,14 @@
       "fileMatch": ["home/run_onchange_install-go\\.sh\\.tmpl$"],
       "matchStrings": ["GO_VERSION=\"(?<currentValue>[^\"]+)\""],
       "depNameTemplate": "golang",
-      "datasourceTemplate": "github-releases",
-      "packageNameTemplate": "golang/go",
-      "extractVersionTemplate": "^go(?<version>.*)$"
+      "datasourceTemplate": "golang-version"
     },
     {
       "customType": "regex",
       "fileMatch": ["home/run_onchange_install-python\\.sh\\.tmpl$"],
       "matchStrings": ["PYTHON_VERSION=\"(?<currentValue>[^\"]+)\""],
       "depNameTemplate": "python",
-      "datasourceTemplate": "github-releases",
-      "packageNameTemplate": "python/cpython",
-      "extractVersionTemplate": "^v(?<version>.*)$"
+      "datasourceTemplate": "python-version"
     },
     {
       "customType": "regex",
@@ -38,16 +34,35 @@
       "customType": "regex",
       "fileMatch": ["home/run_onchange_install-java\\.sh\\.tmpl$"],
       "matchStrings": ["JAVA_VERSION=\"(?<currentValue>[^\"]+)\""],
-      "depNameTemplate": "temurin",
+      "depNameTemplate": "java",
+      "packageNameTemplate": "java-jdk",
       "datasourceTemplate": "java-version"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["build/Dockerfile\\.(ubuntu|amazon|manual)$"],
+      "matchStrings": ["FROM\\s+(?<depName>[^:\\s]+):(?<currentValue>[^\\s]+)"],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["\\.renovate/Dockerfile\\.renovate$"],
+      "matchStrings": ["FROM\\s+(?<depName>[^:\\s]+):(?<currentValue>[^\\s]+)"],
+      "datasourceTemplate": "docker"
     }
   ],
   "packageRules": [
     {
-      "matchManagers": ["dockerfile"],
-      "matchPaths": [".renovate/Dockerfile.renovate"],
+      "matchManagers": ["custom.regex"],
+      "matchFileNames": [".renovate/Dockerfile.renovate"],
       "commitMessagePrefix": "chore(renovate):",
       "description": "Track Renovate image updates"
+    },
+    {
+      "matchManagers": ["custom.regex"],
+      "matchFileNames": ["build/Dockerfile.*"],
+      "commitMessagePrefix": "chore(docker):",
+      "description": "Track Docker base image updates in build directory"
     },
     {
       "matchManagers": ["custom.regex"],
