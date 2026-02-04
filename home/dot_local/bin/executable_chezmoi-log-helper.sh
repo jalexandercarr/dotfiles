@@ -75,12 +75,6 @@ print_done() {
     printf "\r\033[K  ${CLR_GREEN}✓${CLR_RESET} ${message}\n"
 }
 
-# Print a skipped step
-print_skip() {
-    local message="$1"
-    printf "\n${CLR_DIM}○${CLR_RESET} ${CLR_DIM}${message}${CLR_RESET}\n"
-}
-
 # Print a failed step
 print_fail() {
     local message="$1"

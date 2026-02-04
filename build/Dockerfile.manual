@@ -23,7 +23,6 @@ RUN apt-get update -y && \
       make \
       unzip \
       fontconfig \
-      vim \
       locales
 
 # Set up locales for proper shell behavior

@@ -30,6 +30,11 @@ printf "  ${CLR_GREEN}✓${CLR_RESET} Development tools\n"
 {{- else }}
 printf "  ${CLR_DIM}○ Development tools${CLR_RESET}\n"
 {{- end }}
+{{- if .packages.neovim }}
+printf "  ${CLR_GREEN}✓${CLR_RESET} Neovim\n"
+{{- else }}
+printf "  ${CLR_DIM}○ Neovim${CLR_RESET}\n"
+{{- end }}
 {{- if .packages.docker }}
 printf "  ${CLR_GREEN}✓${CLR_RESET} Docker\n"
 {{- else }}
