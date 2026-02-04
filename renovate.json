@@ -1,30 +1,48 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
-  "schedule": ["after 9pm on friday"],
+  "extends": [
+    "config:recommended"
+  ],
+  "schedule": [
+    "after 9pm on friday"
+  ],
   "timezone": "America/Los_Angeles",
   "rebaseWhen": "auto",
-  "reviewers": ["jalexandercarr"],
+  "reviewers": [
+    "jalexandercarr"
+  ],
   "prConcurrentLimit": 10,
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["home/run_onchange_install-go\\.sh\\.tmpl$"],
-      "matchStrings": ["GO_VERSION=\"(?<currentValue>[^\"]+)\""],
+      "managerFilePatterns": [
+        "/home/run_onchange_install-go\\.sh\\.tmpl$/"
+      ],
+      "matchStrings": [
+        "GO_VERSION=\"(?<currentValue>[^\"]+)\""
+      ],
       "depNameTemplate": "golang",
       "datasourceTemplate": "golang-version"
     },
     {
       "customType": "regex",
-      "fileMatch": ["home/run_onchange_install-python\\.sh\\.tmpl$"],
-      "matchStrings": ["PYTHON_VERSION=\"(?<currentValue>[^\"]+)\""],
+      "managerFilePatterns": [
+        "/home/run_onchange_install-python\\.sh\\.tmpl$/"
+      ],
+      "matchStrings": [
+        "PYTHON_VERSION=\"(?<currentValue>[^\"]+)\""
+      ],
       "depNameTemplate": "python",
       "datasourceTemplate": "python-version"
     },
     {
       "customType": "regex",
-      "fileMatch": ["home/run_onchange_install-node\\.sh\\.tmpl$"],
-      "matchStrings": ["NVM_VERSION=\"(?<currentValue>[^\"]+)\""],
+      "managerFilePatterns": [
+        "/home/run_onchange_install-node\\.sh\\.tmpl$/"
+      ],
+      "matchStrings": [
+        "NVM_VERSION=\"(?<currentValue>[^\"]+)\""
+      ],
       "depNameTemplate": "nvm",
       "datasourceTemplate": "github-releases",
       "packageNameTemplate": "nvm-sh/nvm",
@@ -32,41 +50,65 @@
     },
     {
       "customType": "regex",
-      "fileMatch": ["home/run_onchange_install-java\\.sh\\.tmpl$"],
-      "matchStrings": ["JAVA_VERSION=\"(?<currentValue>[^\"]+)\""],
+      "managerFilePatterns": [
+        "/home/run_onchange_install-java\\.sh\\.tmpl$/"
+      ],
+      "matchStrings": [
+        "JAVA_VERSION=\"(?<currentValue>[^\"]+)\""
+      ],
       "depNameTemplate": "java",
       "packageNameTemplate": "java-jdk",
       "datasourceTemplate": "java-version"
     },
     {
       "customType": "regex",
-      "fileMatch": ["build/Dockerfile\\.(ubuntu|amazon|manual)$"],
-      "matchStrings": ["FROM\\s+(?<depName>[^:\\s]+):(?<currentValue>[^\\s]+)"],
+      "managerFilePatterns": [
+        "/build/Dockerfile\\.(ubuntu|amazon|manual)$/"
+      ],
+      "matchStrings": [
+        "FROM\\s+(?<depName>[^:\\s]+):(?<currentValue>[^\\s]+)"
+      ],
       "datasourceTemplate": "docker"
     },
     {
       "customType": "regex",
-      "fileMatch": ["\\.renovate/Dockerfile\\.renovate$"],
-      "matchStrings": ["FROM\\s+(?<depName>[^:\\s]+):(?<currentValue>[^\\s]+)"],
+      "managerFilePatterns": [
+        "/\\.renovate/Dockerfile\\.renovate$/"
+      ],
+      "matchStrings": [
+        "FROM\\s+(?<depName>[^:\\s]+):(?<currentValue>[^\\s]+)"
+      ],
       "datasourceTemplate": "docker"
     }
   ],
   "packageRules": [
     {
-      "matchManagers": ["custom.regex"],
-      "matchFileNames": [".renovate/Dockerfile.renovate"],
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchFileNames": [
+        ".renovate/Dockerfile.renovate"
+      ],
       "commitMessagePrefix": "chore(renovate):",
       "description": "Track Renovate image updates"
     },
     {
-      "matchManagers": ["custom.regex"],
-      "matchFileNames": ["build/Dockerfile.*"],
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchFileNames": [
+        "build/Dockerfile.*"
+      ],
       "commitMessagePrefix": "chore(docker):",
       "description": "Track Docker base image updates in build directory"
     },
     {
-      "matchManagers": ["custom.regex"],
-      "matchFileNames": ["home/**"],
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchFileNames": [
+        "home/**"
+      ],
       "commitMessagePrefix": "chore(deps):",
       "description": "Track version updates in installation scripts"
     }
