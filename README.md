@@ -169,7 +169,7 @@ make test-amazon
 | `.profile` | Login shell environment |
 | `.zprofile` | Zsh login shell environment |
 | `.gitconfig` | Git configuration (templated with your name/email) |
-| `.vimrc` | Vim configuration |
+| `.config/nvim/init.vim` | Neovim configuration |
 | `.bash_completion` | Bash completion scripts |
 | `.zsh_completion` | Zsh completion scripts |
 

@@ -201,15 +201,11 @@ check_file "$HOME/.gitconfig" "gitconfig"
 check_file_contains "$HOME/.gitconfig" "Test User" "gitconfig contains user name"
 check_file_contains "$HOME/.gitconfig" "test@example.com" "gitconfig contains user email"
 
-# Vim configuration
-check_file "$HOME/.vimrc" "vimrc"
-check_dir "$HOME/.vim" "vim directory"
-check_dir "$HOME/.vim/autoload" "vim autoload directory"
-check_file "$HOME/.vim/autoload/plug.vim" "vim-plug plugin manager"
-check_dir "$HOME/.vim/colors" "vim colors directory"
-check_file "$HOME/.vim/colors/gruvbox.vim" "gruvbox color scheme"
-check_file "$HOME/.vim/colors/onedark.vim" "onedark color scheme"
-check_dir "$HOME/.vim/plugin" "vim plugin directory"
+# Neovim configuration
+check_file "$HOME/.config/nvim/init.vim" "nvim init.vim"
+check_dir "$HOME/.config/nvim" "nvim config directory"
+check_dir "$HOME/.local/share/nvim/site/autoload" "nvim autoload directory"
+check_file "$HOME/.local/share/nvim/site/autoload/plug.vim" "vim-plug plugin manager"
 
 # Shell aliases and completions
 check_file "$HOME/.aliases" "aliases"

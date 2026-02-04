@@ -15,6 +15,7 @@
 {{- /* ═══════════════════════════════════════════════════════════════════════ */ -}}
 
 {{- $installDevtools := promptBoolOnce . "packages.devtools" "Development tools" true -}}
+{{- $installNeovim := promptBoolOnce . "packages.neovim" "Neovim" true -}}
 {{- $installDocker := promptBoolOnce . "packages.docker" "Docker" false -}}
 {{- $installGo := promptBoolOnce . "packages.go" "Go" false -}}
 {{- $installKubernetes := promptBoolOnce . "packages.kubernetes" "Kubernetes tools" false -}}
@@ -35,6 +36,7 @@ data:
   sshSigningKey: {{ $sshSigningKey | quote }}
   packages:
     devtools: {{ $installDevtools }}
+    neovim: {{ $installNeovim }}
     docker: {{ $installDocker }}
     go: {{ $installGo }}
     kubernetes: {{ $installKubernetes }}

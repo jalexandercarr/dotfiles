@@ -1,6 +1,6 @@
 {
     "edit": {
-        "command": "vim",
+        "command": "nvim",
         "args": []
     }
 }

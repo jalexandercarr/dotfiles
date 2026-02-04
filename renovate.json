@@ -104,6 +104,15 @@
         "FROM\\s+(?<depName>[^:\\s]+):(?<currentValue>[^\\s]+)"
       ],
       "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["home/run_onchange_install-neovim\.sh\.tmpl$"],
+      "matchStrings": ["NVIM_VERSION=\"(?<currentValue>[^\"]+)\""],
+      "depNameTemplate": "neovim",
+      "datasourceTemplate": "github-releases",
+      "packageNameTemplate": "neovim/neovim",
+      "extractVersionTemplate": "^v(?<version>.*)$"
     }
   ],
   "packageRules": [
