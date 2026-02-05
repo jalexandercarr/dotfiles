@@ -1,29 +1,22 @@
 #!/bin/bash
 # chezmoi:template:left-delimiter="{{" right-delimiter="}}"
 # Install Node.js via NVM - optional, controlled by chezmoi config
+# NVM provides idempotent version management - updates in place, no uninstall needed
 
-# Initialize log file first (before any redirects)
-mkdir -p "${HOME}/.local/log/chezmoi"
-CHEZMOI_LOG_FILE="${HOME}/.local/log/chezmoi/install-$(date +%Y%m%d-%H%M%S).log"
-
-# Source the logging helper
-HELPER_SCRIPT="${HOME}/.local/bin/chezmoi-log-helper.sh"
-if [[ -f "$HELPER_SCRIPT" ]]; then
-    source "$HELPER_SCRIPT"
-else
-    # Fallback if helper not yet installed - create minimal functions
-    print_header() { printf "\n\033[1m\033[34m▸\033[0m \033[1m%s\033[0m\n" "$1"; }
+# Source the logging helper (installed by chezmoi before scripts run)
+source "${HOME}/.local/bin/chezmoi-log-helper.sh" 2>/dev/null || {
+    mkdir -p "${HOME}/.local/log/chezmoi"
+    CHEZMOI_LOG_FILE="${HOME}/.local/log/chezmoi/install-$(date +%Y%m%d-%H%M%S).log"
+    print_header() { printf "\n\033[1;34m▸\033[0m \033[1m%s\033[0m\n" "$1"; }
     print_done() { printf "  \033[32m✓\033[0m %s\n" "$1"; }
-    print_skip() { printf "  \033[2m○\033[0m \033[2m%s\033[0m\n" "$1"; }
+    print_skip() { printf "  \033[2m○ %s\033[0m\n" "$1"; }
     print_fail() { printf "  \033[31m✗\033[0m %s\n" "$1"; }
-    print_info() { printf "  \033[2m%s\033[0m\n" "$1"; }
-    with_spinner() { local msg="$1"; shift; printf "  \033[36m⠋\033[0m %s" "$msg"; if "$@" >> "$CHEZMOI_LOG_FILE" 2>&1; then printf "\r\033[K"; print_done "$msg"; else printf "\r\033[K"; print_fail "$msg"; return 1; fi; }
-    log_silent() { echo "[$(date '+%H:%M:%S')] $*" >> "$CHEZMOI_LOG_FILE"; }
-    log_section() { echo "=== $1 ===" >> "$CHEZMOI_LOG_FILE"; }
-fi
+    with_spinner() { shift; "$@" >> "$CHEZMOI_LOG_FILE" 2>&1; }
+    log_silent() { :; }; log_section() { :; }
+}
 
 {{- if not .packages.node }}
-print_skip "Node.js (disabled in config)"
+print_skip "Node (disabled in config)"
 exit 0
 {{- end }}
 
@@ -32,55 +25,60 @@ set -euo pipefail
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
 
-NVM_VERSION="0.39.3"
+NVM_VERSION="0.40.1"
+NODE_VERSION="24.11.1"  # Use "lts" for latest LTS, or specify like "20" or "20.11.0"
+NVM_DIR="${HOME}/.nvm"
 
-log_section "Node.js Installation"
-print_header "Node.js (via NVM)"
+log_section "Node Installation"
+print_header "Node ${NODE_VERSION}"
 
-install_node_deps_macos() {
-    if ! command -v brew >/dev/null; then
-        with_spinner "Installing Homebrew" /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+install_node_deps() {
+    if [[ "$OS" == "darwin" ]]; then
+        if ! command -v brew >/dev/null; then
+            with_spinner "Installing Homebrew" /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        fi
+        with_spinner "Installing curl" brew install --quiet curl
+    elif [[ -f /etc/debian_version ]]; then
+        with_spinner "Installing prerequisites" bash -c "sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq curl build-essential"
+    elif [[ -f /etc/fedora-release ]]; then
+        with_spinner "Installing prerequisites" sudo dnf install -y -q curl gcc-c++ make
+    elif [[ -f /etc/centos-release ]] || [[ -f /etc/redhat-release ]] || [[ -f /etc/system-release ]]; then
+        with_spinner "Installing prerequisites" sudo yum install -y -q curl gcc-c++ make
+    elif [[ -f /etc/arch-release ]]; then
+        with_spinner "Installing prerequisites" sudo pacman -Sy --noconfirm --quiet curl base-devel
+    else
+        print_fail "Unsupported OS for Node.js installation"
+        exit 1
     fi
-    with_spinner "Installing curl" brew install --quiet curl
 }
 
-install_node_deps_debian() {
-    with_spinner "Updating package lists" sudo apt-get update -qq
-    with_spinner "Installing prerequisites" sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq curl build-essential
-}
+install_node_deps
 
-install_node_deps_fedora() {
-    with_spinner "Installing prerequisites" sudo dnf install -y -q curl gcc-c++ make
-}
+# Install or update NVM (idempotent - the install script handles updates)
+# PROFILE=/dev/null prevents nvm from modifying shell config files (we manage that ourselves)
+# METHOD=script tells nvm to download via curl instead of git clone
+export NVM_DIR
+with_spinner "Installing nvm" bash -c "curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | PROFILE=/dev/null METHOD=script bash"
 
-install_node_deps_rhel() {
-    with_spinner "Installing prerequisites" sudo yum install -y -q curl gcc-c++ make
-}
+# Source NVM for this script
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" >> "$CHEZMOI_LOG_FILE" 2>&1
 
-install_node_deps_arch() {
-    with_spinner "Installing prerequisites" sudo pacman -Sy --noconfirm --quiet curl base-devel
-}
+# Install Node.js (NVM handles this idempotently)
+log_silent "Installing Node ${NODE_VERSION}"
+with_spinner "Installing node ${NODE_VERSION}" nvm install $NODE_VERSION
 
-# Install OS-specific dependencies
-if [[ "$OS" == "darwin" ]]; then
-    install_node_deps_macos
-elif [[ -f /etc/debian_version ]]; then
-    install_node_deps_debian
-elif [[ -f /etc/fedora-release ]]; then
-    install_node_deps_fedora
-elif [[ -f /etc/centos-release ]] || [[ -f /etc/redhat-release ]] || [[ -f /etc/system-release ]]; then
-    install_node_deps_rhel
-elif [[ -f /etc/arch-release ]]; then
-    install_node_deps_arch
-else
-    print_fail "Unsupported OS for Node.js dependencies"
-    log_silent "Unsupported OS: $OS"
-    exit 1
-fi
+# Set as default
+log_silent "Setting Node ${NODE_VERSION} as default"
+with_spinner "Setting node ${NODE_VERSION} as global" nvm alias default "$NODE_VERSION" >> "$CHEZMOI_LOG_FILE" 2>&1 || true
 
-# Install NVM
-export METHOD="script"
-with_spinner "Installing NVM ${NVM_VERSION}" bash -c "curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v$NVM_VERSION/install.sh | bash"
+# Clean up old Node.js versions (keep only the current LTS/specified version)
+log_silent "Cleaning up old Node.js versions"
+CURRENT_VERSION=$(nvm current 2>/dev/null | sed 's/^v//')
+for version in $(nvm ls --no-colors 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | sed 's/^v//' | sort -u); do
+    if [[ "$version" != "$CURRENT_VERSION" ]]; then
+        log_silent "Removing old Node.js version: $version"
+        nvm uninstall "$version" >> "$CHEZMOI_LOG_FILE" 2>&1 || true
+    fi
+done
 
-print_done "NVM installed"
-print_info "Run 'nvm install --lts' after restarting your shell"
+print_done "Node ${NODE_VERSION} installed"
