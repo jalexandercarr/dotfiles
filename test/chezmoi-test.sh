@@ -155,7 +155,6 @@ data:
     kubernetes: true
     node: true
     python: true
-    java: true
     fonts: true
   addons:
     motd: true
@@ -240,8 +239,9 @@ if [[ "$SKIP_PACKAGES" == "false" ]]; then
         check_pass "Docker installation script executed"
     fi
 
-    # Go installation
-    export PATH="$PATH:/usr/local/bin:/usr/local/go/bin"
+    # Go installation (via goenv)
+    export GOENV_ROOT="$HOME/.goenv"
+    export PATH="$GOENV_ROOT/bin:$GOENV_ROOT/shims:$PATH:/usr/local/bin:/usr/local/go/bin"
     if command -v go &>/dev/null; then
         check_pass "Go is installed ($(go version 2>/dev/null | head -c 30)...)"
     else
@@ -255,18 +255,13 @@ if [[ "$SKIP_PACKAGES" == "false" ]]; then
         check_fail "NVM directory does not exist"
     fi
 
-    # Python installation
-    if command -v python3 &>/dev/null || command -v python3.12 &>/dev/null; then
-        check_pass "Python is installed"
+    # Python installation (via pyenv)
+    export PYENV_ROOT="$HOME/.pyenv"
+    export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PATH"
+    if command -v python3 &>/dev/null || command -v python &>/dev/null; then
+        check_pass "Python is installed ($(python3 --version 2>/dev/null || python --version 2>/dev/null))"
     else
         check_fail "Python is not installed"
-    fi
-
-    # Java installation
-    if command -v java &>/dev/null; then
-        check_pass "Java is installed ($(java -version 2>&1 | head -1 | head -c 50)...)"
-    else
-        check_fail "Java is not installed"
     fi
 
     # Kubernetes tools

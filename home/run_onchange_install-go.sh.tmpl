@@ -1,25 +1,19 @@
 #!/bin/bash
 # chezmoi:template:left-delimiter="{{" right-delimiter="}}"
-# Install Go - optional, controlled by chezmoi config
+# Install Go via goenv - optional, controlled by chezmoi config
+# goenv provides idempotent version management - updates in place, no uninstall needed
 
-# Initialize log file first (before any redirects)
-mkdir -p "${HOME}/.local/log/chezmoi"
-CHEZMOI_LOG_FILE="${HOME}/.local/log/chezmoi/install-$(date +%Y%m%d-%H%M%S).log"
-
-# Source the logging helper
-HELPER_SCRIPT="${HOME}/.local/bin/chezmoi-log-helper.sh"
-if [[ -f "$HELPER_SCRIPT" ]]; then
-    source "$HELPER_SCRIPT"
-else
-    # Fallback if helper not yet installed - create minimal functions
-    print_header() { printf "\n\033[1m\033[34m▸\033[0m \033[1m%s\033[0m\n" "$1"; }
+# Source the logging helper (installed by chezmoi before scripts run)
+source "${HOME}/.local/bin/chezmoi-log-helper.sh" 2>/dev/null || {
+    mkdir -p "${HOME}/.local/log/chezmoi"
+    CHEZMOI_LOG_FILE="${HOME}/.local/log/chezmoi/install-$(date +%Y%m%d-%H%M%S).log"
+    print_header() { printf "\n\033[1;34m▸\033[0m \033[1m%s\033[0m\n" "$1"; }
     print_done() { printf "  \033[32m✓\033[0m %s\n" "$1"; }
-    print_skip() { printf "  \033[2m○\033[0m \033[2m%s\033[0m\n" "$1"; }
+    print_skip() { printf "  \033[2m○ %s\033[0m\n" "$1"; }
     print_fail() { printf "  \033[31m✗\033[0m %s\n" "$1"; }
-    with_spinner() { local msg="$1"; shift; printf "  \033[36m⠋\033[0m %s" "$msg"; if "$@" >> "$CHEZMOI_LOG_FILE" 2>&1; then printf "\r\033[K"; print_done "$msg"; else printf "\r\033[K"; print_fail "$msg"; return 1; fi; }
-    log_silent() { echo "[$(date '+%H:%M:%S')] $*" >> "$CHEZMOI_LOG_FILE"; }
-    log_section() { echo "=== $1 ===" >> "$CHEZMOI_LOG_FILE"; }
-fi
+    with_spinner() { shift; "$@" >> "$CHEZMOI_LOG_FILE" 2>&1; }
+    log_silent() { :; }; log_section() { :; }
+}
 
 {{- if not .packages.go }}
 print_skip "Go (disabled in config)"
@@ -32,69 +26,65 @@ OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
 
 GO_VERSION="1.22.5"
-
-# Normalize OS and ARCH for Go download
-GO_OS="$OS"
-GO_ARCH="$ARCH"
-
-if [[ "$GO_ARCH" == "x86_64" ]]; then
-    GO_ARCH="amd64"
-elif [[ "$GO_ARCH" == "arm64" || "$GO_ARCH" == "aarch64" ]]; then
-    GO_ARCH="arm64"
-else
-    print_fail "Unsupported architecture: $GO_ARCH"
-    exit 1
-fi
+GOENV_ROOT="${HOME}/.goenv"
 
 log_section "Go Installation"
 print_header "Go ${GO_VERSION}"
 
-install_go_macos() {
-    if ! command -v brew >/dev/null; then
-        with_spinner "Installing Homebrew" /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    fi
-    with_spinner "Installing Go" brew install --quiet go
-}
-
-install_go_linux() {
-    # Install wget/tar dependencies
-    if [[ -f /etc/debian_version ]]; then
-        with_spinner "Installing prerequisites" bash -c "sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq wget tar"
+# Install prerequisites based on OS
+install_goenv_deps() {
+    if [[ "$OS" == "darwin" ]]; then
+        if ! command -v brew >/dev/null; then
+            with_spinner "Installing Homebrew" /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        fi
+        with_spinner "Installing git" brew install --quiet git
+    elif [[ -f /etc/debian_version ]]; then
+        with_spinner "Installing prerequisites" bash -c "sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git curl"
     elif [[ -f /etc/fedora-release ]]; then
-        with_spinner "Installing prerequisites" sudo dnf install -y -q wget tar
+        with_spinner "Installing prerequisites" sudo dnf install -y -q git curl
     elif [[ -f /etc/centos-release ]] || [[ -f /etc/redhat-release ]] || [[ -f /etc/system-release ]]; then
-        with_spinner "Installing prerequisites" sudo yum install -y -q wget tar
+        with_spinner "Installing prerequisites" sudo yum install -y -q git curl
     elif [[ -f /etc/arch-release ]]; then
-        with_spinner "Installing prerequisites" sudo pacman -Sy --noconfirm --quiet wget tar
+        with_spinner "Installing prerequisites" sudo pacman -Sy --noconfirm --quiet git curl
     else
         print_fail "Unsupported OS for Go installation"
         exit 1
     fi
-
-    # Cleanup existing Go installations
-    sudo rm -rf /usr/local/go* >> "$CHEZMOI_LOG_FILE" 2>&1 || true
-    mkdir -p /tmp/golang >> "$CHEZMOI_LOG_FILE" 2>&1
-
-    with_spinner "Downloading Go ${GO_VERSION}" wget --quiet "https://go.dev/dl/go${GO_VERSION}.${GO_OS}-${GO_ARCH}.tar.gz" -P /tmp/golang
-    with_spinner "Extracting Go" sudo tar -C /usr/local -xzf "/tmp/golang/go${GO_VERSION}.${GO_OS}-${GO_ARCH}.tar.gz"
-    
-    log_silent "Setting up Go symlinks"
-    sudo mv /usr/local/go "/usr/local/go${GO_VERSION}" >> "$CHEZMOI_LOG_FILE" 2>&1
-    sudo ln -sf "/usr/local/go${GO_VERSION}/bin/go" /usr/local/bin/go >> "$CHEZMOI_LOG_FILE" 2>&1
-    
-    rm -rf /tmp/golang >> "$CHEZMOI_LOG_FILE" 2>&1
 }
 
-if [[ "$OS" == "darwin" ]]; then
-    install_go_macos
+# Enable git HTTPS override for installation
+enable_git_https_override 2>/dev/null || true
+
+install_goenv_deps
+
+# Install or update goenv (idempotent - updates in place)
+if [[ -d "$GOENV_ROOT" ]]; then
+    with_spinner "Updating goenv" bash -c "cd $GOENV_ROOT && git pull --quiet origin master"
 else
-    install_go_linux
+    with_spinner "Installing goenv" git clone --quiet https://github.com/go-nv/goenv.git "$GOENV_ROOT"
 fi
 
-# Verify installation
-if command -v go >/dev/null 2>&1; then
-    GO_INSTALLED_VERSION=$(go version 2>/dev/null | awk '{print $3}')
-    print_done "Go installed ($GO_INSTALLED_VERSION)"
+# Set up goenv environment for this script
+export GOENV_ROOT
+export PATH="$GOENV_ROOT/bin:$PATH"
+eval "$(goenv init -)" >> "$CHEZMOI_LOG_FILE" 2>&1 || true
+
+# Install the specified Go version (goenv handles this idempotently)
+if goenv versions --bare 2>/dev/null | grep -q "^${GO_VERSION}$"; then
+    with_spinner "Go ${GO_VERSION} already installed"
 else
-    print_done "Go installed (restart shell to use)"
+    with_spinner "Installing go ${GO_VERSION}" goenv install "$GO_VERSION"
 fi
+
+# Set global version
+with_spinner "Setting go ${GO_VERSION} as global" goenv global "$GO_VERSION"
+# Clean up old Go versions (keep only the current version)
+log_silent "Cleaning up old Go versions"
+for version in $(goenv versions --bare 2>/dev/null); do
+    if [[ "$version" != "$GO_VERSION" ]]; then
+        log_silent "Removing old Go version: $version"
+        goenv uninstall -f "$version" >> "$CHEZMOI_LOG_FILE" 2>&1 || true
+    fi
+done
+
+print_done "Go ${GO_VERSION} installed"
