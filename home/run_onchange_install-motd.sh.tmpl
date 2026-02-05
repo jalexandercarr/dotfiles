@@ -233,7 +233,7 @@ if [[ -w /etc/motd ]] || [[ "$(id -u)" == "0" ]]; then
     print_done "MOTD configured"
 else
     echo -e "$MOTD_CONTENT" | sudo tee /etc/motd > /dev/null 2>> "$CHEZMOI_LOG_FILE"
-    print_done "MOTD configured (with sudo)"
+    print_done "MOTD configured"
 fi
 
 log_silent "MOTD installation complete"

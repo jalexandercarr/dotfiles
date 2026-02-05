@@ -46,24 +46,19 @@ printf "  ${CLR_GREEN}✓${CLR_RESET} Kubernetes tools\n"
 printf "  ${CLR_DIM}○ Kubernetes tools${CLR_RESET}\n"
 {{- end }}
 {{- if .packages.node }}
-printf "  ${CLR_GREEN}✓${CLR_RESET} Node.js (NVM)\n"
+printf "  ${CLR_GREEN}✓${CLR_RESET} Node\n"
 {{- else }}
-printf "  ${CLR_DIM}○ Node.js${CLR_RESET}\n"
+printf "  ${CLR_DIM}○ Node${CLR_RESET}\n"
 {{- end }}
 {{- if .packages.python }}
 printf "  ${CLR_GREEN}✓${CLR_RESET} Python\n"
 {{- else }}
 printf "  ${CLR_DIM}○ Python${CLR_RESET}\n"
 {{- end }}
-{{- if .packages.java }}
-printf "  ${CLR_GREEN}✓${CLR_RESET} Java\n"
-{{- else }}
-printf "  ${CLR_DIM}○ Java${CLR_RESET}\n"
-{{- end }}
 {{- if .packages.fonts }}
-printf "  ${CLR_GREEN}✓${CLR_RESET} Nerd Fonts\n"
+printf "  ${CLR_GREEN}✓${CLR_RESET} Fonts\n"
 {{- else }}
-printf "  ${CLR_DIM}○ Nerd Fonts${CLR_RESET}\n"
+printf "  ${CLR_DIM}○ Fonts${CLR_RESET}\n"
 {{- end }}
 printf "\n"
 printf "${CLR_BOLD}${CLR_BLUE}▸${CLR_RESET} ${CLR_BOLD}Add-ons${CLR_RESET}\n"
