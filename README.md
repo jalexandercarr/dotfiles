@@ -76,7 +76,6 @@ You can enable/disable the following during setup:
 - **kubernetes**: kubectl, kind, kubectx, kubens
 - **node**: Node.js via NVM
 - **python**: Python from source or package manager
-- **java**: OpenJDK
 - **fonts**: Nerd Fonts (FiraMono)
 
 ## Repository Structure

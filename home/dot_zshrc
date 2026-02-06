@@ -90,9 +90,6 @@ precmd() {
   set_zsh_prompt
 }
 
-# Load NVM
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-
 # Alias definitions
 if [[ -f ~/.aliases ]]; then
     source ~/.aliases

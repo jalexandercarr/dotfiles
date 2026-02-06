@@ -14,14 +14,13 @@
 {{- /*                              Packages                                   */ -}}
 {{- /* ═══════════════════════════════════════════════════════════════════════ */ -}}
 
-{{- $installDevtools := promptBoolOnce . "packages.devtools" "Development tools (git, vim, make)" true -}}
+{{- $installDevtools := promptBoolOnce . "packages.devtools" "Development tools" true -}}
 {{- $installDocker := promptBoolOnce . "packages.docker" "Docker" false -}}
 {{- $installGo := promptBoolOnce . "packages.go" "Go" false -}}
 {{- $installKubernetes := promptBoolOnce . "packages.kubernetes" "Kubernetes tools" false -}}
-{{- $installNode := promptBoolOnce . "packages.node" "Node.js (NVM)" false -}}
+{{- $installNode := promptBoolOnce . "packages.node" "Node" false -}}
 {{- $installPython := promptBoolOnce . "packages.python" "Python" false -}}
-{{- $installJava := promptBoolOnce . "packages.java" "Java (OpenJDK)" false -}}
-{{- $installFonts := promptBoolOnce . "packages.fonts" "Nerd Fonts" true -}}
+{{- $installFonts := promptBoolOnce . "packages.fonts" "Fonts" true -}}
 
 {{- /* ═══════════════════════════════════════════════════════════════════════ */ -}}
 {{- /*                              Add-ons                                    */ -}}
@@ -41,7 +40,6 @@ data:
     kubernetes: {{ $installKubernetes }}
     node: {{ $installNode }}
     python: {{ $installPython }}
-    java: {{ $installJava }}
     fonts: {{ $installFonts }}
   addons:
     motd: {{ $installMotd }}
