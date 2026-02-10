@@ -50,15 +50,23 @@
     },
     {
       "customType": "regex",
-      "fileMatch": ["home/run_onchange_install-node\\.sh\\.tmpl$"],
-      "matchStrings": ["NODE_VERSION=\"(?<currentValue>[^\"]+)\""],
+      "managerFilePatterns": [
+        "/home/run_onchange_install-node\\.sh\\.tmpl$/"
+      ],
+      "matchStrings": [
+        "NODE_VERSION=\"(?<currentValue>[^\"]+)\""
+      ],
       "depNameTemplate": "node",
       "datasourceTemplate": "node-version"
     },
     {
       "customType": "regex",
-      "fileMatch": ["home/run_onchange_install-kubernetes\\.sh\\.tmpl$"],
-      "matchStrings": ["KIND_VERSION=\"(?<currentValue>[^\"]+)\""],
+      "managerFilePatterns": [
+        "/home/run_onchange_install-kubernetes\\.sh\\.tmpl$/"
+      ],
+      "matchStrings": [
+        "KIND_VERSION=\"(?<currentValue>[^\"]+)\""
+      ],
       "depNameTemplate": "kind",
       "datasourceTemplate": "github-releases",
       "packageNameTemplate": "kubernetes-sigs/kind",
@@ -66,18 +74,25 @@
     },
     {
       "customType": "regex",
-      "fileMatch": ["home/run_onchange_install-kubernetes\\.sh\\.tmpl$"],
-      "matchStrings": ["KUBECTL_VERSION=\"(?<currentValue>[^\"]+)\""],
+      "managerFilePatterns": [
+        "/home/run_onchange_install-kubernetes\\.sh\\.tmpl$/"
+      ],
+      "matchStrings": [
+        "KUBECTL_VERSION=\"(?<currentValue>[^\"]+)\""
+      ],
       "depNameTemplate": "kubectl",
       "datasourceTemplate": "github-releases",
       "packageNameTemplate": "kubernetes/kubernetes",
       "extractVersionTemplate": "^v(?<version>.*)$"
     },
-
     {
       "customType": "regex",
-      "fileMatch": ["build/Dockerfile\\.(ubuntu|amazon|manual)$"],
-      "matchStrings": ["FROM\\s+(?<depName>[^:\\s]+):(?<currentValue>[^\\s]+)"],
+      "managerFilePatterns": [
+        "/build/Dockerfile\\.(ubuntu|amazon|manual)$/"
+      ],
+      "matchStrings": [
+        "FROM\\s+(?<depName>[^:\\s]+):(?<currentValue>[^\\s]+)"
+      ],
       "datasourceTemplate": "docker"
     },
     {
