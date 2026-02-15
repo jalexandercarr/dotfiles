@@ -1,7 +1,54 @@
-# Kubernetes
-complete -o default -F __start_kubectl k
-complete -F _kube_namespaces kn
-complete -F _kube_contexts kx
+# ~/.bash_completion - custom bash completions
 
-# Node/NVM
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+# --- Git ---
+if command -v git >/dev/null 2>&1; then
+    # Source git completions if available
+    if [ -f /usr/share/bash-completion/completions/git ]; then
+        . /usr/share/bash-completion/completions/git
+    elif [ -f /usr/local/share/bash-completion/completions/git ]; then
+        . /usr/local/share/bash-completion/completions/git
+    elif [ -f /opt/homebrew/etc/bash_completion.d/git-completion.bash ]; then
+        . /opt/homebrew/etc/bash_completion.d/git-completion.bash
+    fi
+    # Apply git completion to aliases
+    if type __git_complete >/dev/null 2>&1; then
+        __git_complete g __git_main
+        __git_complete gs _git_status
+        __git_complete ga _git_add
+        __git_complete gaa _git_add
+        __git_complete gam _git_add
+        __git_complete gc _git_commit
+        __git_complete gca _git_commit
+        __git_complete gch _git_checkout
+        __git_complete gb _git_branch
+        __git_complete gr _git_rebase
+        __git_complete grc _git_rebase
+        __git_complete gra _git_rebase
+    fi
+fi
+
+# --- Docker ---
+if command -v docker >/dev/null 2>&1; then
+    if [ -f /usr/share/bash-completion/completions/docker ]; then
+        . /usr/share/bash-completion/completions/docker
+    elif [ -f /opt/homebrew/etc/bash_completion.d/docker ]; then
+        . /opt/homebrew/etc/bash_completion.d/docker
+    fi
+fi
+
+# --- Kubernetes ---
+if command -v kubectl >/dev/null 2>&1; then
+    source <(kubectl completion bash)
+    complete -o default -F __start_kubectl k
+fi
+
+if command -v kubens >/dev/null 2>&1; then
+    complete -C kubens kn
+fi
+
+if command -v kubectx >/dev/null 2>&1; then
+    complete -C kubectx kx
+fi
+
+# --- NVM ---
+[ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"

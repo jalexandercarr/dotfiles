@@ -1,11 +1,44 @@
-# ZSH completions
+# ~/.zsh_completion - custom zsh completions
 
-# Kubernetes completions
+# --- Git ---
+if command -v git &>/dev/null; then
+    # Zsh ships with git completions; ensure aliases get completion
+    compdef g=git
+    compdef gs='git status'
+    compdef ga='git add'
+    compdef gaa='git add'
+    compdef gam='git add'
+    compdef gc='git commit'
+    compdef gca='git commit'
+    compdef gch='git checkout'
+    compdef gb='git branch'
+    compdef gr='git rebase'
+    compdef grc='git rebase'
+    compdef gra='git rebase'
+fi
+
+# --- Docker ---
+if command -v docker &>/dev/null; then
+    if [[ -f /usr/share/zsh/vendor-completions/_docker ]]; then
+        source /usr/share/zsh/vendor-completions/_docker
+    elif [[ -f /opt/homebrew/share/zsh/site-functions/_docker ]]; then
+        source /opt/homebrew/share/zsh/site-functions/_docker
+    fi
+fi
+
+# --- Kubernetes ---
 if command -v kubectl &>/dev/null; then
     source <(kubectl completion zsh)
-    alias k='kubectl'
     compdef k=kubectl
 fi
 
-# Node/NVM completions
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+if command -v kubens &>/dev/null; then
+    compdef kn=kubens
+fi
+
+if command -v kubectx &>/dev/null; then
+    compdef kx=kubectx
+fi
+
+# --- NVM ---
+[ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
