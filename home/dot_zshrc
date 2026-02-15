@@ -1,24 +1,22 @@
-# ~/.zshrc: executed by zsh for non-login shells.
+# ~/.zshrc - executed by zsh(1) for interactive shells
 
 # If not running interactively, don't do anything
 [[ $- != *i* ]] && return
 
-# don't put duplicate lines in the history
+# --- History ---
 setopt HIST_IGNORE_ALL_DUPS
 setopt HIST_IGNORE_SPACE
-
-# append to the history file, don't overwrite it
 setopt APPEND_HISTORY
 setopt INC_APPEND_HISTORY
 
-# set history size
+HISTFILE="$HOME/.zsh_history"
 HISTSIZE=1000
-HISTFILESIZE=2000
+SAVEHIST=2000
 
-# make less more friendly for non-text input files
+# --- Lesspipe ---
 [[ -x /usr/bin/lesspipe ]] && eval "$(SHELL=/bin/sh lesspipe)"
 
-# set variable identifying the chroot
+# --- Chroot detection ---
 if [[ -z "$debian_chroot" && -r /etc/debian_chroot ]]; then
     debian_chroot=$(cat /etc/debian_chroot 2>/dev/null)
 fi
@@ -90,12 +88,22 @@ precmd() {
   set_zsh_prompt
 }
 
-# Alias definitions
+# --- Tool initialization ---
+if command -v goenv &>/dev/null; then
+    eval "$(goenv init -)" 2>/dev/null
+fi
+
+if command -v pyenv &>/dev/null; then
+    eval "$(pyenv init -)" 2>/dev/null
+    eval "$(pyenv virtualenv-init -)" 2>/dev/null
+fi
+
+# --- Aliases ---
 if [[ -f ~/.aliases ]]; then
     source ~/.aliases
 fi
 
-# Load zsh completions
+# --- Completions ---
 if [[ -f ~/.zsh_completion ]]; then
     source ~/.zsh_completion
 fi
