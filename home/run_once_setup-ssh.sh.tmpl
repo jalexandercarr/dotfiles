@@ -10,15 +10,20 @@
 #
 # Idempotent: re-running does nothing if the key and config block already
 # exist.
+#
+# generateSshKey/sshKeyName are read with `index` rather than `.key`: configs
+# created before this prompt existed don't have them, and chezmoi's default
+# missingkey=error would otherwise fail every `chezmoi update` until the
+# user re-ran `chezmoi init`.
 
-{{- if not .generateSshKey }}
+{{- if not (index . "generateSshKey") }}
 exit 0
 {{- end }}
 
 set -euo pipefail
 
 SSH_DIR="${HOME}/.ssh"
-KEY_NAME="{{ .sshKeyName }}"
+KEY_NAME="{{ index . "sshKeyName" | default "" }}"
 KEY_PATH="${SSH_DIR}/${KEY_NAME}"
 SSH_CONFIG="${SSH_DIR}/config"
 MARKER="# github.com (managed by chezmoi)"

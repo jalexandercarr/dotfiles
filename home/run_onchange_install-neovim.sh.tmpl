@@ -25,9 +25,13 @@ set -euo pipefail
 log_section "Neovim Plugins Installation"
 print_header "Neovim Plugins"
 
-if command -v nvim >/dev/null 2>&1 && [[ -f "$HOME/.local/share/nvim/site/autoload/plug.vim" ]]; then
+# Absolute path rather than PATH lookup: on a fresh `chezmoi init --apply`,
+# ~/.local/bin usually isn't on PATH yet.
+NVIM_BIN="${HOME}/.local/bin/nvim"
+
+if [[ -x "$NVIM_BIN" ]] && [[ -f "$HOME/.local/share/nvim/site/autoload/plug.vim" ]]; then
     # --sync makes PlugInstall block until all clones finish (default is async)
-    with_spinner "Installing plugins" nvim --headless +"PlugInstall --sync" +qall
+    with_spinner "Installing plugins" "$NVIM_BIN" --headless +"PlugInstall --sync" +qall
 else
     print_fail "Cannot install plugins (nvim or vim-plug not found)"
     exit 1

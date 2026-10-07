@@ -65,6 +65,22 @@ check "$GIT_HOOK" "git stash is blocked" \
     '{"tool_input":{"command":"git stash"}}' 2
 check "$GIT_HOOK" "compound command with a dangerous git op is blocked" \
     '{"tool_input":{"command":"cd /tmp/repo && git reset --hard origin/main"}}' 2
+check "$GIT_HOOK" "subshell with a dangerous git op is blocked" \
+    '{"tool_input":{"command":"(cd /tmp/repo; git push -f)"}}' 2
+check "$GIT_HOOK" "command substitution with a dangerous git op is blocked" \
+    '{"tool_input":{"command":"echo $(git reset --hard HEAD~1)"}}' 2
+check "$GIT_HOOK" "backtick substitution with a dangerous git op is blocked" \
+    '{"tool_input":{"command":"echo `git stash`"}}' 2
+check "$GIT_HOOK" "sudo-wrapped dangerous git op is blocked" \
+    '{"tool_input":{"command":"sudo git clean -fdx"}}' 2
+check "$GIT_HOOK" "env-wrapped dangerous git op is blocked" \
+    '{"tool_input":{"command":"env GIT_TRACE=1 git push --force origin main"}}' 2
+check "$GIT_HOOK" "xargs-wrapped dangerous git op is blocked" \
+    '{"tool_input":{"command":"echo feature | xargs -n1 git branch -D"}}' 2
+check "$GIT_HOOK" "sudo-wrapped gh outside the allowlist is blocked" \
+    '{"tool_input":{"command":"sudo gh repo delete foo/bar"}}' 2
+check "$GIT_HOOK" "installing the gh package is allowed (not a gh invocation)" \
+    '{"tool_input":{"command":"sudo apt install -y gh"}}' 0
 check "$GIT_HOOK" "gh pr merge is blocked (not in allowlist)" \
     '{"tool_input":{"command":"gh pr merge 5"}}' 2
 check "$GIT_HOOK" "gh api with -X DELETE is blocked" \
