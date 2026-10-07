@@ -132,14 +132,17 @@ fi
 # compinit's function-security audit is the slow part; skip it (-C) on runs
 # where the cached dump is less than a day old, and only pay for a full scan
 # once daily so newly-installed completions still get picked up.
+# The glob qualifier lives in an array assignment rather than [[ ]]: inside
+# [[ ]] it needs the (#q) form, which only works with EXTENDED_GLOB, and
+# enabling that globally would break things like `git reset HEAD^`.
 autoload -Uz compinit
-_zcompdump="$HOME/.zcompdump"
-if [[ -n "$_zcompdump"(#qN.mh+24) ]]; then
+_zcompdump_stale=("$HOME/.zcompdump"(N.mh+24))
+if (( ${#_zcompdump_stale} )); then
     compinit
 else
     compinit -C
 fi
-unset _zcompdump
+unset _zcompdump_stale
 
 if [[ -f ~/.zsh_completion ]]; then
     source ~/.zsh_completion

@@ -10,9 +10,15 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
 [[ -z "$COMMAND" ]] && exit 0
 
-# Inspect git/gh anywhere in the command, not just at the start — otherwise
-# compound commands like `cd repo && git push -f` skip inspection entirely.
-echo "$COMMAND" | grep -qE '(^|[;&|]|&&|\|\|)\s*(git|gh)\b' || exit 0
+# Inspect git/gh anywhere a command can start, not just at the start of the
+# string — otherwise compound commands (`cd repo && git push -f`), subshells
+# and substitutions (`(git ...)`, `$(git ...)`, `` `git ...` ``), and wrapper
+# commands (`sudo git ...`, `env FOO=1 git ...`, `xargs -n1 git ...`) skip
+# inspection entirely. Wrapper arguments are limited to flags and VAR=value
+# so that e.g. `sudo apt install gh` isn't mistaken for a gh invocation.
+CMD_START='(^|[;&|(`])\s*((sudo|env|xargs|command|exec|nohup|time)(\s+(-\S+|\w+=\S*))*\s+)?'
+
+echo "$COMMAND" | grep -qE "${CMD_START}(git|gh)\b" || exit 0
 
 block() {
   echo "Blocked: $1. This action is not permitted and cannot be overridden." >&2
@@ -22,7 +28,7 @@ block() {
 # ── git: denylist ─────────────────────────────────────────────────────────────
 # The set of dangerous git operations is small and stable — denylist is appropriate.
 
-if echo "$COMMAND" | grep -qE '(^|[;&|]|&&|\|\|)\s*git\b'; then
+if echo "$COMMAND" | grep -qE "${CMD_START}git\b"; then
   # Force push (any form)
   echo "$COMMAND" | grep -qE 'git push.+(-f\b|--force\b|--force-with-lease\b)' \
     && block "force push is not permitted and cannot be overridden"
@@ -62,7 +68,7 @@ fi
 # gh has too many subcommands to enumerate dangerous ones — allowlist known-safe
 # operations and block everything else by default.
 
-if echo "$COMMAND" | grep -qE '(^|[;&|]|&&|\|\|)\s*gh\b'; then
+if echo "$COMMAND" | grep -qE "${CMD_START}gh\b"; then
   # Auth: status only (login/logout/refresh/switch require human presence)
   echo "$COMMAND" | grep -qE '\bgh auth status\b' && exit 0
 
