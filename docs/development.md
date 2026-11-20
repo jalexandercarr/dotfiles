@@ -9,10 +9,10 @@ home/               # chezmoi source — maps to ~/
   run_once_*        # Scripts that run once
   run_onchange_*    # Scripts that re-run when content changes
   dot_claude/       # Claude Code config
-  dot_config/       # XDG config files (nvim, lima, ccstatusline)
+  dot_config/       # XDG config files (nvim, ccstatusline)
   dot_local/bin/    # Installed CLI tools
 build/              # Dockerfiles for Ubuntu and Amazon Linux
-test/               # chezmoi-test.sh integration test script
+test/               # chezmoi-test.sh (integration), shellcheck.sh, hooks-test.sh
 docs/               # Documentation
 ```
 
@@ -25,6 +25,8 @@ make build           # Build all Docker images
 make test            # Run install tests on all containers
 make test-ubuntu     # Ubuntu only
 make test-amazon     # Amazon Linux only
+make shellcheck      # Lint shell scripts and rendered chezmoi templates
+make test-hooks      # Run Claude Code safety hook tests (host, no container)
 make manual-test     # Interactive container for manual testing
 ```
 

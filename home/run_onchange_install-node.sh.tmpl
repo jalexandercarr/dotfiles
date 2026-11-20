@@ -24,7 +24,10 @@ OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
 
 NVM_VERSION="0.40.8"
-NODE_VERSION="26.13.0"  # Use "lts" for latest LTS, or specify like "20" or "20.11.0"
+# Must be a full x.y.z version: the cleanup below uninstalls every installed
+# version that isn't an exact match, so "lts" or a bare major like "24" would
+# remove and reinstall Node on every run.
+NODE_VERSION="26.13.0"
 NVM_DIR="${HOME}/.nvm"
 
 log_section "Node Installation"
