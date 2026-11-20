@@ -82,7 +82,6 @@ RUN mkdir -p ~/.config/chezmoi && \
       '    docker: false' \
       '    go: true' \
       '    kubernetes: true' \
-      '    lima: false' \
       '    node: true' \
       '    python: true' \
       '  addons:' \

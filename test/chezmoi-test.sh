@@ -155,7 +155,6 @@ data:
     docker: false
     go: true
     kubernetes: true
-    lima: true
     node: true
     neovim: true
     python: true
@@ -362,18 +361,6 @@ if [[ "$SKIP_PACKAGES" == "false" ]]; then
     else
         check_fail "kubectx is not installed"
     fi
-
-    # Lima - installed via .chezmoiexternal.yaml.tmpl into ~/.local (Linux)
-    check_file "$HOME/.local/bin/limactl" "limactl binary at ~/.local/bin"
-    check_file "$HOME/.config/lima/dev-arm64.yaml" "Lima ARM64 VM template"
-    check_file "$HOME/.config/lima/dev-x86_64.yaml" "Lima x86_64 VM template"
-    for lima_config in "$HOME/.config/lima/dev-arm64.yaml" "$HOME/.config/lima/dev-x86_64.yaml"; do
-        if limactl validate "$lima_config" &>/dev/null; then
-            check_pass "$(basename "$lima_config") is valid (limactl validate)"
-        else
-            check_fail "$(basename "$lima_config") failed limactl validate"
-        fi
-    done
 
     # MOTD dynamic script
     if [[ -f "$HOME/.local/bin/motd" ]]; then

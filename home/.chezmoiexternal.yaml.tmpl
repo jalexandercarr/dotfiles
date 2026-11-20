@@ -1,6 +1,6 @@
 # chezmoi:template:left-delimiter="{{" right-delimiter="}}"
-# Direct-binary tool installs (kubectl, kind, kubectx/kubens, nvim, and
-# limactl on Linux), managed through chezmoi's native external mechanism
+# Direct-binary tool installs (kubectl, kind, kubectx/kubens, and nvim),
+# managed through chezmoi's native external mechanism
 # instead of curl+sudo install scripts.
 #
 # Why: the old scripts ran `sudo rm` on the existing binary before `curl`,
@@ -25,15 +25,12 @@
 {{- $kindVersion := "0.33.0" -}}
 {{- $kubectxVersion := "0.11.0" -}}
 {{- $nvimVersion := "0.12.5" -}}
-{{- $limaVersion := "1.0.3" -}}
 
-{{- /* nvim and lima release assets use different arch/os names than
-       chezmoi's own .chezmoi.arch/.chezmoi.os normalize to. */ -}}
+{{- /* nvim release assets use different arch/os names than chezmoi's
+       own .chezmoi.arch/.chezmoi.os normalize to. */ -}}
 {{- $nvimArch := "x86_64" -}}
-{{- $limaArch := "x86_64" -}}
 {{- if eq .chezmoi.arch "arm64" -}}
 {{-   $nvimArch = "arm64" -}}
-{{-   $limaArch = "aarch64" -}}
 {{- end -}}
 
 {{- $nvimOS := "linux" -}}
@@ -67,30 +64,4 @@
   type: archive
   url: "https://github.com/neovim/neovim/releases/download/v{{ $nvimVersion }}/nvim-{{ $nvimOS }}-{{ $nvimArch }}.tar.gz"
   stripComponents: 1
-{{ end -}}
-
-{{ if and .packages.lima (eq .chezmoi.os "linux") -}}
-# macOS uses Homebrew instead (run_onchange_install-lima.sh.tmpl); Homebrew
-# already keeps that path off /usr/local/bin collisions and up to date.
-#
-# Target is ".local/lima", not ".local" itself: chezmoi won't let an
-# archive external claim a directory that's also populated by regular
-# managed content (dot_local/ already owns .local/bin/*, .local/share/nvim/
-# ...), so limactl gets its own namespaced dir and a symlink onto PATH,
-# same as nvim (dot_local/bin/symlink_limactl).
-#
-# include is required, not cosmetic: without it, chezmoi reports this
-# entry's own target path as being defined twice ("inconsistent state"),
-# apparently tripping over the archive's bare top-level directory entries.
-# Restricting extraction to bin/ and share/ (everything limactl needs)
-# avoids those entries entirely. The archive's members are named "./bin/..."
-# and "./share/...", not "bin/..." — the leading "./" must be in the
-# pattern or it silently matches nothing (verified against the real
-# tarball; a bare "bin/**" produces an empty target directory, no error).
-".local/lima":
-  type: archive
-  url: "https://github.com/lima-vm/lima/releases/download/v{{ $limaVersion }}/lima-{{ $limaVersion }}-Linux-{{ $limaArch }}.tar.gz"
-  include:
-    - "./bin/**"
-    - "./share/**"
 {{ end -}}

@@ -77,7 +77,6 @@ data:
     docker: true
     go: true
     kubernetes: true
-    lima: true
     node: true
     neovim: true
     python: true

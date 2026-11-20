@@ -12,19 +12,18 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply jalexandercarr/dotfiles
 chezmoi init --apply jalexandercarr/dotfiles
 ```
 
-During init you'll be prompted for your name, email, GitHub username, SSH signing key path, and which packages/add-ons to install.
+During init you'll be prompted for your name, email, GitHub username, SSH signing key path, whether to generate an SSH key for GitHub, and which packages/add-ons to install.
 
 ## Packages
 
-Prompted during `chezmoi init`. Re-run automatically when install scripts change (except `fonts`, which is one-time).
+Prompted during `chezmoi init`. Re-run automatically when install scripts change.
 
 | Package | Default | Description |
 |---------|---------|-------------|
 | devtools | on | Core build tools, git, fzf |
-| neovim | on | Neovim with LSP, completion, plugins |
+| neovim | on | Neovim (installed to `~/.local`, no sudo) with LSP, completion, plugins |
 | go | on | goenv + Go |
-| kubernetes | on | kind, kubectl, kubectx/kubens |
-| lima | off | Lima VMs for lightweight Linux on macOS |
+| kubernetes | on | kind, kubectl, kubectx/kubens (installed to `~/.local/bin`, no sudo) |
 | node | on | NVM + Node.js |
 | python | on | pyenv + Python |
 | docker | off | Docker CE / Docker Desktop |
@@ -37,7 +36,7 @@ Prompted during `chezmoi init`. Re-run automatically when install scripts change
 | vscode | on | VS Code settings, keybindings, extensions |
 | ai | on | Claude Code config and settings |
 | obsidian | off | Obsidian vaults at `~/vaults/` — `personal`, `libdex` |
-| fonts | off | FiraMono Nerd Font (installed once, not re-run on changes) |
+| fonts | off | FiraMono Nerd Font (re-installed when a font file changes) |
 
 When `ai` is enabled, you'll also be prompted for **Claude provider** (`claude` or `bedrock`, default `claude`).
 

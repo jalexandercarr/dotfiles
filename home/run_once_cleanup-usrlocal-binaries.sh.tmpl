@@ -1,15 +1,15 @@
 #!/bin/bash
 # chezmoi:template:left-delimiter="{{" right-delimiter="}}"
 # One-time cleanup of direct-binary installs from before kubectl, kind,
-# kubectx/kubens, nvim, and Lima (Linux) moved to .chezmoiexternal.yaml.tmpl.
+# kubectx/kubens, and nvim moved to .chezmoiexternal.yaml.tmpl.
 # Those binaries now live under ~/.local (no sudo, no /usr/local collisions
 # with Homebrew or Docker Desktop) — this just removes the old copies so
 # they don't shadow the new ones on PATH.
 #
 # Only removes what the old install scripts created, and only for packages
 # that are still enabled (so a replacement exists under ~/.local):
-#   - kubectl/kind and the Lima tarball's files: plain files. Homebrew (/usr/local is its prefix
-#     on Intel Macs) and Docker Desktop install symlinks, which are skipped.
+#   - kubectl/kind: plain files. Homebrew (/usr/local is its prefix on Intel
+#     Macs) and Docker Desktop install symlinks, which are skipped.
 #   - kubectx/kubens/nvim and bash completions: symlinks, removed only when
 #     they point at the old install location.
 #
@@ -68,20 +68,6 @@ remove_regular_file /etc/bash_completion.d/kubectl
 
 {{ if .packages.neovim -}}
 remove_symlink_to /usr/local/bin/nvim "${HOME}/.local/nvim/bin/nvim"
-{{- end }}
-
-{{ if and .packages.lima (eq .chezmoi.os "linux") -}}
-# The old script extracted the whole Lima tarball into /usr/local, so take
-# everything it shipped, not just limactl. An unmatched man-page glob stays
-# literal and fails remove_regular_file's -f check, so it's a no-op.
-for lima_binary in limactl lima apptainer.lima docker.lima kubectl.lima nerdctl.lima podman.lima; do
-    remove_regular_file "/usr/local/bin/${lima_binary}"
-done
-for lima_man_page in /usr/local/share/man/man1/lima.1 /usr/local/share/man/man1/limactl*.1; do
-    remove_regular_file "$lima_man_page"
-done
-remove_directory /usr/local/share/lima
-remove_directory /usr/local/share/doc/lima
 {{- end }}
 
 if (( ${#FAILED_PATHS[@]} )); then

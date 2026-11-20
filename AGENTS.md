@@ -11,7 +11,7 @@ home/               # chezmoi source — maps to ~/
   run_once_*        # Scripts that run once (e.g., welcome message)
   run_onchange_*    # Scripts that re-run when their content changes (package installs)
   dot_claude/       # Claude Code config — CLAUDE.md, hooks/, skills/, settings, keybindings
-  dot_config/       # XDG config files (nvim, lima, ccstatusline)
+  dot_config/       # XDG config files (nvim, ccstatusline)
   dot_local/bin/    # Installed CLI tools: motd, motd-static, chezmoi-log-helper.sh
   vaults/           # Obsidian vaults (personal, libdex); installed at ~/vaults when addons.obsidian is set
   vscode/           # VSCode settings/keybindings/extensions, installed directly by run_onchange_install-vscode.sh.tmpl
