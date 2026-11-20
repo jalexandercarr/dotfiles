@@ -120,6 +120,20 @@
       "datasourceTemplate": "github-releases",
       "packageNameTemplate": "neovim/neovim",
       "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/build\\.yaml$/",
+        "/^test/chezmoi-test\\.sh$/"
+      ],
+      "matchStrings": [
+        "CHEZMOI_VERSION(?:=|:\\s*)\"(?<currentValue>[^\"]+)\""
+      ],
+      "depNameTemplate": "chezmoi",
+      "datasourceTemplate": "github-releases",
+      "packageNameTemplate": "twpayne/chezmoi",
+      "extractVersionTemplate": "^v(?<version>.*)$"
     }
   ],
   "packageRules": [
@@ -142,6 +156,17 @@
       ],
       "commitMessagePrefix": "chore(deps):",
       "description": "Track version updates in installation scripts"
+    },
+    {
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchFileNames": [
+        ".github/workflows/**",
+        "test/**"
+      ],
+      "commitMessagePrefix": "chore(ci):",
+      "description": "Track tool versions pinned in CI workflows and test scripts"
     }
   ]
 }

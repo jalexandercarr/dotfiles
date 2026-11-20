@@ -124,9 +124,12 @@ log_info "Dotfiles directory: $DOTFILES_DIR"
 # INSTALL CHEZMOI
 # ============================================================================
 
+# Pinned so test results don't shift under a new chezmoi release; bumped by Renovate
+CHEZMOI_VERSION="2.74.1"
+
 log_info "Installing chezmoi..."
 if ! command -v chezmoi &>/dev/null; then
-    sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+    sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin" -t "v${CHEZMOI_VERSION}"
     export PATH="$HOME/.local/bin:$PATH"
 fi
 check_command chezmoi "chezmoi"

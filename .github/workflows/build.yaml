@@ -20,7 +20,10 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v7
     - name: Install chezmoi
-      run: sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+      env:
+        # Pinned so lint results don't shift under a new chezmoi release; bumped by Renovate
+        CHEZMOI_VERSION: "2.74.1"
+      run: sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin" -t "v${CHEZMOI_VERSION}"
     - name: Run shellcheck
       run: |
         export PATH="$HOME/.local/bin:$PATH"
