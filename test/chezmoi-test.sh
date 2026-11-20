@@ -237,13 +237,26 @@ if [[ "$(stat -c '%a' "$HOME/.ssh/id_github_test" 2>/dev/null || stat -f '%Lp' "
 else
     check_fail "SSH private key is mode 600"
 fi
-# Re-apply must not duplicate the managed github.com block
-chezmoi apply --force --keep-going >/dev/null 2>&1 || true
-if [[ "$(grep -c 'github.com (managed by chezmoi)' "$HOME/.ssh/config")" == "1" ]]; then
-    check_pass "SSH config block is idempotent across re-apply"
+# Running the script a second time must not duplicate the managed github.com
+# block or replace the key. `chezmoi apply` won't re-run a run_once_ script
+# whose content is unchanged, so render and execute it directly instead.
+ssh_key_before="$(cat "$HOME/.ssh/id_github_test.pub" 2>/dev/null)"
+if chezmoi execute-template < "$(chezmoi source-path)/run_once_setup-ssh.sh.tmpl" | bash; then
+    check_pass "SSH setup script re-runs cleanly"
 else
-    check_fail "SSH config block is idempotent across re-apply"
+    check_fail "SSH setup script re-runs cleanly"
 fi
+if [[ "$(grep -c 'github.com (managed by chezmoi)' "$HOME/.ssh/config")" == "1" ]]; then
+    check_pass "SSH config block is not duplicated on re-run"
+else
+    check_fail "SSH config block is not duplicated on re-run"
+fi
+if [[ -n "$ssh_key_before" && "$(cat "$HOME/.ssh/id_github_test.pub")" == "$ssh_key_before" ]]; then
+    check_pass "SSH key is not regenerated on re-run"
+else
+    check_fail "SSH key is not regenerated on re-run"
+fi
+unset ssh_key_before
 
 # Neovim configuration
 check_file "$HOME/.config/nvim/init.vim" "nvim init.vim"
