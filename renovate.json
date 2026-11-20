@@ -62,10 +62,10 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/home/run_onchange_install-kubernetes\\.sh\\.tmpl$/"
+        "/home/\\.chezmoiexternal\\.yaml\\.tmpl$/"
       ],
       "matchStrings": [
-        "KIND_VERSION=\"(?<currentValue>[^\"]+)\""
+        "\\$kindVersion := \"(?<currentValue>[^\"]+)\""
       ],
       "depNameTemplate": "kind",
       "datasourceTemplate": "github-releases",
@@ -75,14 +75,27 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/home/run_onchange_install-kubernetes\\.sh\\.tmpl$/"
+        "/home/\\.chezmoiexternal\\.yaml\\.tmpl$/"
       ],
       "matchStrings": [
-        "KUBECTL_VERSION=\"(?<currentValue>[^\"]+)\""
+        "\\$kubectlVersion := \"(?<currentValue>[^\"]+)\""
       ],
       "depNameTemplate": "kubectl",
       "datasourceTemplate": "github-releases",
       "packageNameTemplate": "kubernetes/kubernetes",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/home/\\.chezmoiexternal\\.yaml\\.tmpl$/"
+      ],
+      "matchStrings": [
+        "\\$kubectxVersion := \"(?<currentValue>[^\"]+)\""
+      ],
+      "depNameTemplate": "kubectx",
+      "datasourceTemplate": "github-releases",
+      "packageNameTemplate": "ahmetb/kubectx",
       "extractVersionTemplate": "^v(?<version>.*)$"
     },
     {
@@ -98,14 +111,28 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/home/run_onchange_install-neovim\\.sh\\.tmpl$/"
+        "/home/\\.chezmoiexternal\\.yaml\\.tmpl$/"
       ],
       "matchStrings": [
-        "NVIM_VERSION=\"(?<currentValue>[^\"]+)\""
+        "\\$nvimVersion := \"(?<currentValue>[^\"]+)\""
       ],
       "depNameTemplate": "neovim",
       "datasourceTemplate": "github-releases",
       "packageNameTemplate": "neovim/neovim",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/build\\.yaml$/",
+        "/^test/chezmoi-test\\.sh$/"
+      ],
+      "matchStrings": [
+        "CHEZMOI_VERSION(?:=|:\\s*)\"(?<currentValue>[^\"]+)\""
+      ],
+      "depNameTemplate": "chezmoi",
+      "datasourceTemplate": "github-releases",
+      "packageNameTemplate": "twpayne/chezmoi",
       "extractVersionTemplate": "^v(?<version>.*)$"
     }
   ],
@@ -129,6 +156,17 @@
       ],
       "commitMessagePrefix": "chore(deps):",
       "description": "Track version updates in installation scripts"
+    },
+    {
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchFileNames": [
+        ".github/workflows/**",
+        "test/**"
+      ],
+      "commitMessagePrefix": "chore(ci):",
+      "description": "Track tool versions pinned in CI workflows and test scripts"
     }
   ]
 }

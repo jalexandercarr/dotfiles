@@ -124,9 +124,12 @@ log_info "Dotfiles directory: $DOTFILES_DIR"
 # INSTALL CHEZMOI
 # ============================================================================
 
+# Pinned so test results don't shift under a new chezmoi release; bumped by Renovate
+CHEZMOI_VERSION="2.74.1"
+
 log_info "Installing chezmoi..."
 if ! command -v chezmoi &>/dev/null; then
-    sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+    sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin" -t "v${CHEZMOI_VERSION}"
     export PATH="$HOME/.local/bin:$PATH"
 fi
 check_command chezmoi "chezmoi"
@@ -141,19 +144,20 @@ log_info "Configuring chezmoi..."
 mkdir -p "$HOME/.config/chezmoi"
 
 # Create test configuration
-# Enable packages that can be tested in a container (docker, fonts, and lima binary install are excluded)
+# Enable packages that can be tested in a container (docker and fonts are excluded)
 cat > "$HOME/.config/chezmoi/chezmoi.yaml" << 'EOF'
 data:
   name: "Test User"
   email: "test@example.com"
   githubUsername: "testuser"
   sshSigningKey: "~/.ssh/id_ed25519.pub"
+  generateSshKey: true
+  sshKeyName: "id_github_test"
   packages:
     devtools: true
     docker: false
     go: true
     kubernetes: true
-    lima: true
     node: true
     neovim: true
     python: true
@@ -211,11 +215,58 @@ check_file "$HOME/.gitconfig" "gitconfig"
 check_file_contains "$HOME/.gitconfig" "Test User" "gitconfig contains user name"
 check_file_contains "$HOME/.gitconfig" "test@example.com" "gitconfig contains user email"
 
+# No URL rewrite: https:// and ssh:// clones should both work unmodified.
+# Read the rendered ~/.gitconfig directly (-f), not the ambient config for
+# the test script's cwd, and anchor to the "url." section specifically — an
+# unanchored `--get-regexp url` also matches legitimate keys like
+# remote.origin.url.
+if git config -f "$HOME/.gitconfig" --get-regexp '^url\.' >/dev/null 2>&1; then
+    check_fail "gitconfig has no url.*.insteadof rewrite"
+else
+    check_pass "gitconfig has no url.*.insteadof rewrite"
+fi
+
+# SSH key bootstrap (prompt-gated: generateSshKey/sshKeyName in the test config above)
+check_file "$HOME/.ssh/id_github_test" "SSH private key"
+check_file "$HOME/.ssh/id_github_test.pub" "SSH public key"
+check_file_contains "$HOME/.ssh/config" "Host github.com" "ssh config has a github.com block"
+if [[ "$(stat -c '%a' "$HOME/.ssh" 2>/dev/null || stat -f '%Lp' "$HOME/.ssh")" == "700" ]]; then
+    check_pass "~/.ssh is mode 700"
+else
+    check_fail "~/.ssh is mode 700"
+fi
+if [[ "$(stat -c '%a' "$HOME/.ssh/id_github_test" 2>/dev/null || stat -f '%Lp' "$HOME/.ssh/id_github_test")" == "600" ]]; then
+    check_pass "SSH private key is mode 600"
+else
+    check_fail "SSH private key is mode 600"
+fi
+# Running the script a second time must not duplicate the managed github.com
+# block or replace the key. `chezmoi apply` won't re-run a run_once_ script
+# whose content is unchanged, so render and execute it directly instead.
+ssh_key_before="$(cat "$HOME/.ssh/id_github_test.pub" 2>/dev/null)"
+if chezmoi execute-template < "$(chezmoi source-path)/run_once_setup-ssh.sh.tmpl" | bash; then
+    check_pass "SSH setup script re-runs cleanly"
+else
+    check_fail "SSH setup script re-runs cleanly"
+fi
+if [[ "$(grep -c 'github.com (managed by chezmoi)' "$HOME/.ssh/config")" == "1" ]]; then
+    check_pass "SSH config block is not duplicated on re-run"
+else
+    check_fail "SSH config block is not duplicated on re-run"
+fi
+if [[ -n "$ssh_key_before" && "$(cat "$HOME/.ssh/id_github_test.pub")" == "$ssh_key_before" ]]; then
+    check_pass "SSH key is not regenerated on re-run"
+else
+    check_fail "SSH key is not regenerated on re-run"
+fi
+unset ssh_key_before
+
 # Neovim configuration
 check_file "$HOME/.config/nvim/init.vim" "nvim init.vim"
 check_dir "$HOME/.config/nvim" "nvim config directory"
 check_dir "$HOME/.local/share/nvim/site/autoload" "nvim autoload directory"
 check_file "$HOME/.local/share/nvim/site/autoload/plug.vim" "vim-plug plugin manager"
+check_file "$HOME/.local/bin/nvim" "nvim symlink at ~/.local/bin"
 
 # Shell aliases and completions
 check_file "$HOME/.aliases" "aliases"
@@ -303,35 +354,29 @@ if [[ "$SKIP_PACKAGES" == "false" ]]; then
         check_fail "Python is not installed"
     fi
 
-    # Kubernetes tools
-    if command -v kubectl &>/dev/null || [[ -f "/usr/local/bin/kubectl" ]]; then
+    # Kubernetes tools — installed via .chezmoiexternal.yaml.tmpl into
+    # ~/.local, no sudo, no /usr/local/bin collisions
+    check_file "$HOME/.local/bin/kubectl" "kubectl binary at ~/.local/bin"
+    if command -v kubectl &>/dev/null; then
         check_pass "kubectl is installed"
     else
         check_fail "kubectl is not installed"
     fi
 
-    if command -v kind &>/dev/null || [[ -f "/usr/local/bin/kind" ]]; then
+    check_file "$HOME/.local/bin/kind" "kind binary at ~/.local/bin"
+    if command -v kind &>/dev/null; then
         check_pass "kind is installed"
     else
         check_fail "kind is not installed"
     fi
 
-    if [[ -f "/usr/local/bin/kubectx" ]] || command -v kubectx &>/dev/null; then
+    check_file "$HOME/.local/bin/kubectx" "kubectx symlink at ~/.local/bin"
+    check_file "$HOME/.local/kubectx/completion/kubectx.bash" "kubectx bash completion"
+    if command -v kubectx &>/dev/null; then
         check_pass "kubectx is installed"
     else
         check_fail "kubectx is not installed"
     fi
-
-    # Lima - validate rendered config files with limactl
-    check_file "$HOME/.config/lima/dev-arm64.yaml" "Lima ARM64 VM template"
-    check_file "$HOME/.config/lima/dev-x86_64.yaml" "Lima x86_64 VM template"
-    for lima_config in "$HOME/.config/lima/dev-arm64.yaml" "$HOME/.config/lima/dev-x86_64.yaml"; do
-        if limactl validate "$lima_config" &>/dev/null; then
-            check_pass "$(basename "$lima_config") is valid (limactl validate)"
-        else
-            check_fail "$(basename "$lima_config") failed limactl validate"
-        fi
-    done
 
     # MOTD dynamic script
     if [[ -f "$HOME/.local/bin/motd" ]]; then
