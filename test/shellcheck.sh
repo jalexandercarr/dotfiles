@@ -50,6 +50,8 @@ STATIC_FILES=(
     home/run_onchange_post-configure-claude-json.sh
     test/chezmoi-test.sh
     test/hooks-test.sh
+    test/ghcr-cleanup-test.sh
+    .github/scripts/ghcr-cleanup.sh
 )
 
 echo "==> Linting static shell files"

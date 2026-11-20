@@ -44,6 +44,10 @@ shellcheck: ## Lint shell scripts (and rendered chezmoi templates) with shellche
 test-hooks: ## Run Claude Code safety hook tests (host, no container needed)
 	./test/hooks-test.sh
 
+.PHONY: test-ghcr-cleanup
+test-ghcr-cleanup: ## Test the GHCR cleanup keep/delete rules against fixtures
+	./test/ghcr-cleanup-test.sh
+
 .PHONY: test
 test: test-ubuntu test-amazon ## Run chezmoi tests on all containers
 
@@ -126,6 +130,7 @@ help: ## Show this help
 	@echo "  build-dev              Build the dev container image (single-arch)"
 	@echo "  shellcheck             Lint shell scripts and rendered chezmoi templates"
 	@echo "  test-hooks             Run Claude Code safety hook tests (host, no container)"
+	@echo "  test-ghcr-cleanup      Test the GHCR cleanup keep/delete rules"
 	@echo "  test                   Run chezmoi tests on all containers"
 	@echo "  test-ubuntu            Run chezmoi test on the Ubuntu container"
 	@echo "  test-amazon            Run chezmoi test on the Amazon Linux container"

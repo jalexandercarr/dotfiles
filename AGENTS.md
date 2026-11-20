@@ -16,7 +16,7 @@ home/               # chezmoi source — maps to ~/
   vaults/           # Obsidian vaults (personal, libdex); installed at ~/vaults when addons.obsidian is set
   vscode/           # VSCode settings/keybindings/extensions, installed directly by run_onchange_install-vscode.sh.tmpl
 build/              # Dockerfiles: Ubuntu + Amazon Linux test containers, a dev container, and a manual-test container
-test/               # chezmoi-test.sh (integration), shellcheck.sh, hooks-test.sh
+test/               # chezmoi-test.sh (integration), shellcheck.sh, hooks-test.sh, ghcr-cleanup-test.sh
 docs/               # Extended documentation — shell.md, packages.md, claude-code.md, development.md, index.md
 renovate.json       # Automated dependency updates via Renovate bot
 ```
@@ -30,6 +30,7 @@ make test-ubuntu     # Ubuntu only
 make test-amazon     # Amazon Linux only
 make shellcheck      # Lint shell scripts and rendered chezmoi templates
 make test-hooks      # Run Claude Code safety hook tests (host, no container)
+make test-ghcr-cleanup # Test the GHCR cleanup keep/delete rules (fixtures, no network)
 make manual-test     # Interactive container for manual chezmoi testing
 ```
 
